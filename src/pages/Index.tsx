@@ -14,6 +14,7 @@ import { RPAResult } from "@/lib/rpaAgent";
 import { ClaimStatus } from "@/lib/customerExperienceAgent";
 import { Shield } from "lucide-react";
 import { toast } from "sonner";
+import { BackendStatusBanner } from "@/components/BackendStatusBanner";
 
 const STEPS = ["Upload Image", "Upload Documents", "Claim Decision"];
 
@@ -149,6 +150,7 @@ export default function Index() {
           {currentStep === 1 && (
             <ImageUploadStep 
               onComplete={handleImageComplete}
+              onStatusChange={setStatus}
             />
           )}
 

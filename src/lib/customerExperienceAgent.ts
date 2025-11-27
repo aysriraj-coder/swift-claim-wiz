@@ -1,6 +1,9 @@
 export type ClaimStatus = 
   | "idle"
+  | "uploading_images"
   | "analyzing_image"
+  | "mismatch_detected"
+  | "awaiting_correct_image"
   | "image_analyzed"
   | "extracting_documents"
   | "documents_extracted"
@@ -25,14 +28,29 @@ export function getStatusMessage(status: ClaimStatus): StatusMessage {
       description: "Upload your vehicle damage image to begin the claim process",
       type: "info"
     },
+    uploading_images: {
+      title: "Images uploaded",
+      description: "Preparing to analyze your damage photos",
+      type: "info"
+    },
     analyzing_image: {
-      title: "Analyzing image...",
+      title: "Analyzing images...",
       description: "Our AI is examining the damage to your vehicle",
       type: "info"
     },
+    mismatch_detected: {
+      title: "Mismatch detected",
+      description: "The uploaded images don't match your description",
+      type: "warning"
+    },
+    awaiting_correct_image: {
+      title: "Awaiting correct image",
+      description: "Please upload images that match your damage description",
+      type: "warning"
+    },
     image_analyzed: {
-      title: "Image analysis complete",
-      description: "Damage detected successfully. Please upload your claim documents",
+      title: "All checks passed",
+      description: "Damage verified successfully. Continue to next step",
       type: "success"
     },
     extracting_documents: {
