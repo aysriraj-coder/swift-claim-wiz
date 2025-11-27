@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Gavel, CheckCircle, XCircle, AlertTriangle, Loader2, ArrowRight } from "lucide-react";
-import { getDecision, DecisionResult } from "@/lib/decisionAgent";
+import { getDecision, DecisionResult } from "@/lib/api";
 import { toast } from "sonner";
 
 interface DecisionStepProps {
@@ -32,30 +32,19 @@ export function DecisionStep({ claimId, onComplete }: DecisionStepProps) {
 
   const getDecisionIcon = () => {
     if (!decision) return null;
-    switch (decision.decision) {
-      case "APPROVE":
-        return <CheckCircle className="w-12 h-12 text-success" />;
-      case "REJECT":
-        return <XCircle className="w-12 h-12 text-destructive" />;
-      case "NEEDS_INFO":
-        return <AlertTriangle className="w-12 h-12 text-warning" />;
-      default:
-        return <Gavel className="w-12 h-12 text-primary" />;
-    }
+    const d = decision.decision.toLowerCase();
+    if (d.includes("approve") || d === "auto-approve") return <CheckCircle className="w-12 h-12 text-success" />;
+    if (d.includes("reject") || d === "siu") return <XCircle className="w-12 h-12 text-destructive" />;
+    if (d.includes("review") || d === "manual review") return <AlertTriangle className="w-12 h-12 text-warning" />;
+    return <Gavel className="w-12 h-12 text-primary" />;
   };
 
   const getDecisionColor = () => {
     if (!decision) return "";
-    switch (decision.decision) {
-      case "APPROVE":
-        return "bg-success/10 border-success/20";
-      case "REJECT":
-        return "bg-destructive/10 border-destructive/20";
-      case "NEEDS_INFO":
-        return "bg-warning/10 border-warning/20";
-      default:
-        return "bg-muted";
-    }
+    const d = decision.decision.toLowerCase();
+    if (d.includes("approve") || d === "auto-approve") return "bg-success/10 border-success/20";
+    if (d.includes("reject") || d === "siu") return "bg-destructive/10 border-destructive/20";
+    return "bg-warning/10 border-warning/20";
   };
 
   return (
@@ -65,9 +54,9 @@ export function DecisionStep({ claimId, onComplete }: DecisionStepProps) {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Gavel className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Decision Engine</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Decision Summary</h2>
           <p className="text-muted-foreground">
-            Run the AI decision engine to evaluate the claim
+            AI-powered claim decision based on uploaded evidence
           </p>
         </div>
 
@@ -78,38 +67,43 @@ export function DecisionStep({ claimId, onComplete }: DecisionStepProps) {
               <div>
                 <Badge
                   variant={
-                    decision.decision === "APPROVE" ? "default" :
-                    decision.decision === "REJECT" ? "destructive" : "secondary"
+                    decision.decision.toLowerCase().includes("approve") ? "default" :
+                    decision.decision.toLowerCase().includes("reject") || decision.decision.toLowerCase() === "siu" ? "destructive" : "secondary"
                   }
-                  className={`text-lg px-4 py-1 ${decision.decision === "APPROVE" ? "bg-success" : ""}`}
+                  className={`text-lg px-4 py-1 ${decision.decision.toLowerCase().includes("approve") ? "bg-success" : ""}`}
                 >
                   {decision.decision}
                 </Badge>
               </div>
               <p className="text-foreground">{decision.reason}</p>
               
-              {decision.approvedAmount && (
-                <div className="bg-background/50 rounded-lg p-4">
-                  <span className="text-muted-foreground">Approved Amount:</span>
-                  <p className="text-2xl font-bold text-foreground">
-                    ₹{decision.approvedAmount.toLocaleString()}
-                  </p>
-                </div>
-              )}
-
-              {decision.missingFields && decision.missingFields.length > 0 && (
-                <div className="bg-background/50 rounded-lg p-4 text-left">
-                  <span className="text-muted-foreground text-sm">Missing Information:</span>
-                  <ul className="mt-2 space-y-1">
-                    {decision.missingFields.map((field, idx) => (
-                      <li key={idx} className="text-sm text-foreground flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-warning" />
-                        {field}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {/* Additional Details */}
+              <div className="grid grid-cols-2 gap-3 text-left">
+                {decision.riskLevel && (
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <span className="text-muted-foreground text-sm">Risk Level</span>
+                    <p className="font-medium text-foreground">{decision.riskLevel}</p>
+                  </div>
+                )}
+                {decision.damageZone && (
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <span className="text-muted-foreground text-sm">Damage Zone</span>
+                    <p className="font-medium text-foreground">{decision.damageZone}</p>
+                  </div>
+                )}
+                {decision.mismatchCount !== undefined && (
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <span className="text-muted-foreground text-sm">Mismatch Count</span>
+                    <p className="font-medium text-foreground">{decision.mismatchCount}</p>
+                  </div>
+                )}
+                {decision.approvedAmount !== undefined && (
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <span className="text-muted-foreground text-sm">Approved Amount</span>
+                    <p className="font-medium text-success">₹{decision.approvedAmount.toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
             </div>
           </Card>
         ) : (

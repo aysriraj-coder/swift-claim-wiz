@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, CheckCircle, Loader2, Play } from "lucide-react";
-import { simulateRPA, RPAResult } from "@/lib/rpaAgent";
+import { Bot, CheckCircle, Loader2, Play, Circle } from "lucide-react";
+import { simulateRPA, RPAResult } from "@/lib/api";
 import { toast } from "sonner";
 
 interface RPAStepProps {
@@ -21,16 +21,15 @@ export function RPAStep({ claimId, onComplete }: RPAStepProps) {
     setCurrentStep(0);
 
     try {
-      // Simulate step progression for visual effect
-      const stepInterval = setInterval(() => {
-        setCurrentStep(prev => prev + 1);
-      }, 800);
-
       const rpaResult = await simulateRPA(claimId);
-      
-      clearInterval(stepInterval);
-      setCurrentStep(rpaResult.steps.length);
       setResult(rpaResult);
+
+      // Animate through steps
+      for (let i = 0; i < rpaResult.steps.length; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        setCurrentStep(i + 1);
+      }
+
       toast.success("RPA simulation complete");
     } catch (error) {
       toast.error("RPA simulation failed", {
@@ -48,9 +47,9 @@ export function RPAStep({ claimId, onComplete }: RPAStepProps) {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Bot className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">RPA Simulation</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Simulated RPA Execution</h2>
           <p className="text-muted-foreground">
-            Simulate the robotic process automation workflow
+            Automated workflow simulation for claim processing
           </p>
         </div>
 
@@ -63,41 +62,71 @@ export function RPAStep({ claimId, onComplete }: RPAStepProps) {
               </Badge>
             </div>
 
-            {/* Steps */}
-            <div className="space-y-3">
-              {result.steps.map((step, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 p-3 bg-muted rounded-lg animate-fade-in"
-                  style={{ animationDelay: `${idx * 100}ms` }}
-                >
-                  <div className="w-8 h-8 bg-success/20 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-success" />
+            {/* Animated Timeline */}
+            <div className="relative pl-8 space-y-4">
+              {/* Vertical line */}
+              <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-muted" />
+
+              {result.steps.map((step, idx) => {
+                const isCompleted = idx < currentStep;
+
+                return (
+                  <div key={idx} className="relative flex items-start gap-4">
+                    {/* Step indicator */}
+                    <div
+                      className={`absolute -left-5 flex items-center justify-center w-6 h-6 rounded-full transition-all duration-300 ${
+                        isCompleted
+                          ? "bg-success text-success-foreground"
+                          : "bg-muted border-2 border-muted-foreground/20"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <Circle className="h-4 w-4" />
+                      )}
+                    </div>
+
+                    {/* Step content */}
+                    <div
+                      className={`flex-1 p-3 rounded-lg transition-all duration-300 ${
+                        isCompleted
+                          ? "bg-success/10 border border-success/20"
+                          : "bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">Step {step.step}</span>
+                        {step.status && (
+                          <Badge
+                            variant={step.status === "completed" ? "default" : "secondary"}
+                            className={`text-xs ${step.status === "completed" ? "bg-success" : ""}`}
+                          >
+                            {step.status}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Step {step.step}</p>
-                    <p className="text-xs text-muted-foreground">{step.description}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Success Message */}
-            {result.message && (
-              <div className="bg-success/10 border border-success/20 rounded-lg p-4 text-center">
-                <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" />
-                <p className="text-foreground font-medium">{result.message}</p>
+            {/* Complete Button */}
+            {currentStep >= result.steps.length && (
+              <div className="pt-4">
+                <div className="bg-success/10 border border-success/20 rounded-lg p-4 text-center mb-4">
+                  <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" />
+                  <p className="font-medium text-foreground">Workflow Complete</p>
+                  <p className="text-sm text-muted-foreground">All RPA steps executed successfully</p>
+                </div>
+                <Button onClick={() => onComplete(result)} className="w-full" size="lg">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  View Final Summary
+                </Button>
               </div>
             )}
-
-            <Button
-              onClick={() => onComplete(result)}
-              className="w-full"
-              size="lg"
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Complete Workflow
-            </Button>
           </div>
         ) : isSimulating ? (
           <div className="space-y-4">
@@ -105,18 +134,8 @@ export function RPAStep({ claimId, onComplete }: RPAStepProps) {
               <Loader2 className="w-12 h-12 text-primary animate-spin" />
             </div>
             <p className="text-center text-muted-foreground">
-              Running RPA simulation... Step {currentStep + 1}
+              Running RPA simulation...
             </p>
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((step) => (
-                <div
-                  key={step}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    step <= currentStep ? 'bg-primary' : 'bg-muted'
-                  }`}
-                />
-              ))}
-            </div>
           </div>
         ) : (
           <Button
