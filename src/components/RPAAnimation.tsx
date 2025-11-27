@@ -40,7 +40,8 @@ export function RPAAnimation({ claimData, onComplete }: RPAAnimationProps) {
     };
 
     runRPA();
-  }, [claimData, onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Card className="p-8 max-w-2xl mx-auto animate-fade-in shadow-[var(--shadow-medium)]">
