@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { CheckCircle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { simulateRPA, RPAResult } from "@/lib/rpaAgent";
@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface RPAAnimationProps {
   claimData: any;
-  onComplete: () => void;
+  onComplete: (result: RPAResult) => void;
 }
 
 const RPA_STEPS = [
@@ -19,29 +19,50 @@ const RPA_STEPS = [
 export function RPAAnimation({ claimData, onComplete }: RPAAnimationProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const hasRun = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple executions
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const runRPA = async () => {
       try {
-        // Simulate step-by-step progression
+        // Simulate step-by-step progression (900ms each)
         for (let i = 0; i < RPA_STEPS.length; i++) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 900));
           setCurrentStep(i + 1);
         }
 
-        // Call actual RPA backend
-        await simulateRPA(claimData);
+        // Call actual RPA backend ONCE
+        const result = await simulateRPA(claimData);
         
         setIsComplete(true);
-        setTimeout(onComplete, 1000);
+        
+        // Call onComplete exactly once with the result
+        setTimeout(() => {
+          onComplete(result);
+        }, 1000);
       } catch (error) {
         console.error("RPA failed:", error);
+        // Still complete with a fallback result
+        const fallbackResult: RPAResult = {
+          steps: RPA_STEPS.map((desc, i) => ({
+            step: i + 1,
+            description: desc,
+            status: "completed" as const
+          })),
+          overall_status: "failed"
+        };
+        setIsComplete(true);
+        setTimeout(() => {
+          onComplete(fallbackResult);
+        }, 1000);
       }
     };
 
     runRPA();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Empty dependency array - runs only once on mount
 
   return (
     <Card className="p-8 max-w-2xl mx-auto animate-fade-in shadow-[var(--shadow-medium)]">

@@ -5,9 +5,12 @@ import { DocumentUploadStep } from "@/components/DocumentUploadStep";
 import { DecisionDisplay } from "@/components/DecisionDisplay";
 import { RPAAnimation } from "@/components/RPAAnimation";
 import { CustomerExperiencePanel } from "@/components/CustomerExperiencePanel";
+import { AgentStatusPanel } from "@/components/AgentStatusPanel";
+import { ClaimSummary } from "@/components/ClaimSummary";
 import { VisionAnalysisResult } from "@/lib/visionAgent";
 import { ExtractedDocumentData } from "@/lib/documentAgent";
 import { DecisionResult, getDecision } from "@/lib/decisionAgent";
+import { RPAResult } from "@/lib/rpaAgent";
 import { ClaimStatus } from "@/lib/customerExperienceAgent";
 import { Shield } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +24,9 @@ export default function Index() {
   const [visionResult, setVisionResult] = useState<VisionAnalysisResult | null>(null);
   const [documentData, setDocumentData] = useState<ExtractedDocumentData | null>(null);
   const [decision, setDecision] = useState<DecisionResult | null>(null);
+  const [rpaResult, setRpaResult] = useState<RPAResult | null>(null);
   const [showRPA, setShowRPA] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   const handleImageComplete = (result: VisionAnalysisResult) => {
     setVisionResult(result);
@@ -58,6 +63,10 @@ export default function Index() {
           }, 2000);
         } else {
           setStatus("claim_flagged");
+          // Go directly to summary for SIU cases
+          setTimeout(() => {
+            setShowSummary(true);
+          }, 2000);
         }
       }, 1000);
     } catch (error) {
@@ -67,7 +76,8 @@ export default function Index() {
     }
   };
 
-  const handleRPAComplete = useCallback(() => {
+  const handleRPAComplete = useCallback((result: RPAResult) => {
+    setRpaResult(result);
     setStatus("rpa_completed");
     setTimeout(() => {
       if (decision?.decision === "Auto-Approve") {
@@ -75,10 +85,44 @@ export default function Index() {
       } else {
         setStatus("claim_review");
       }
+      // Show final summary
+      setTimeout(() => {
+        setShowSummary(true);
+      }, 1000);
     }, 500);
   }, [decision]);
 
   const stableClaimData = useMemo(() => ({ visionResult, documentData, decision }), [visionResult, documentData, decision]);
+
+  // Show final summary page
+  if (showSummary) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card shadow-[var(--shadow-soft)]">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">ClaimFlow AI</h1>
+                <p className="text-sm text-muted-foreground">Claim Summary</p>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 py-8">
+          <ClaimSummary 
+            visionResult={visionResult}
+            documentData={documentData}
+            decision={decision}
+            rpaResult={rpaResult}
+          />
+        </main>
+        <CustomerExperiencePanel status={status} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -128,6 +172,9 @@ export default function Index() {
           )}
         </div>
       </main>
+
+      {/* Agent Status Panel */}
+      <AgentStatusPanel status={status} />
 
       {/* Customer Experience Panel */}
       <CustomerExperiencePanel status={status} />
