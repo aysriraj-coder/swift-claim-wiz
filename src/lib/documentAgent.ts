@@ -1,0 +1,26 @@
+const API_BASE = "https://4e94a8e7-1668-4c39-85db-342a63b048e3-00-124qi2yd3st31.sisko.replit.dev:8000";
+
+export interface ExtractedDocumentData {
+  policy_number: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  claimant_name: string;
+  damage_notes: string;
+  claim_amount: number;
+}
+
+export async function extractDocuments(documentFile: File): Promise<ExtractedDocumentData> {
+  const formData = new FormData();
+  formData.append('document', documentFile);
+
+  const response = await fetch(`${API_BASE}/extract-documents`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Document extraction failed: ${response.statusText}`);
+  }
+
+  return response.json();
+}
