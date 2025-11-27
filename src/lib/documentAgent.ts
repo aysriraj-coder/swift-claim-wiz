@@ -20,14 +20,25 @@ export async function extractDocuments(claimId: string, documentFile: File): Pro
   const formData = new FormData();
   formData.append('file', documentFile);
 
-  const response = await fetch(`${API_BASE}/claims/${claimId}/extract-docs`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE}/claims/${claimId}/extract-docs`, {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Document extraction failed: ${response.statusText}`);
+    if (response.status === 404) {
+      throw new Error('Backend endpoint not found. Please check API Base URL.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`Document extraction failed: ${response.statusText}`);
+    }
+
+    return safeJsonParse<ExtractedDocumentData>(response);
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Backend unreachable. Please check API Base URL.');
+    }
+    throw error;
   }
-
-  return safeJsonParse<ExtractedDocumentData>(response);
 }

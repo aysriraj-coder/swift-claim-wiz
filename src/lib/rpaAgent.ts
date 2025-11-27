@@ -19,17 +19,28 @@ export async function simulateRPA(claimId: string, claimData: any): Promise<RPAR
     throw new Error('Backend is offline. Please start the Replit server.');
   }
 
-  const response = await fetch(`${API_BASE}/claims/${claimId}/simulate-rpa`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(claimData),
-  });
+  try {
+    const response = await fetch(`${API_BASE}/claims/${claimId}/simulate-rpa`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(claimData),
+    });
 
-  if (!response.ok) {
-    throw new Error(`RPA simulation failed: ${response.statusText}`);
+    if (response.status === 404) {
+      throw new Error('Backend endpoint not found. Please check API Base URL.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`RPA simulation failed: ${response.statusText}`);
+    }
+
+    return safeJsonParse<RPAResult>(response);
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Backend unreachable. Please check API Base URL.');
+    }
+    throw error;
   }
-
-  return safeJsonParse<RPAResult>(response);
 }

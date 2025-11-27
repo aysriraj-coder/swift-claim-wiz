@@ -20,16 +20,27 @@ export async function uploadImage(claimId: string, imageFile: File): Promise<{ s
   const formData = new FormData();
   formData.append('file', imageFile);
 
-  const response = await fetch(`${API_BASE}/claims/${claimId}/upload-image`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE}/claims/${claimId}/upload-image`, {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Image upload failed: ${response.statusText}`);
+    if (response.status === 404) {
+      throw new Error('Backend endpoint not found. Please check API Base URL.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`Image upload failed: ${response.statusText}`);
+    }
+
+    return safeJsonParse<{ success: boolean; filename: string }>(response);
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Backend unreachable. Please check API Base URL.');
+    }
+    throw error;
   }
-
-  return safeJsonParse<{ success: boolean; filename: string }>(response);
 }
 
 // Analyze an uploaded image for damage detection
@@ -46,14 +57,25 @@ export async function analyzeImage(claimId: string, imageFile: File, userDescrip
     formData.append('description', userDescription);
   }
 
-  const response = await fetch(`${API_BASE}/claims/${claimId}/analyze-image`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE}/claims/${claimId}/analyze-image`, {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Vision analysis failed: ${response.statusText}`);
+    if (response.status === 404) {
+      throw new Error('Backend endpoint not found. Please check API Base URL.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`Vision analysis failed: ${response.statusText}`);
+    }
+
+    return safeJsonParse<VisionAnalysisResult>(response);
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Backend unreachable. Please check API Base URL.');
+    }
+    throw error;
   }
-
-  return safeJsonParse<VisionAnalysisResult>(response);
 }
