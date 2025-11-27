@@ -1,5 +1,5 @@
 // Centralized API Configuration
-export const API_BASE = "https://c8ccbc7a-0b0b-4b6b-8382-59c52e3d4ff1-00-mp30ce7exoea.pike.replit.dev";
+export const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://c8ccbc7a-0b0b-4b6b-8382-59c52e3d4ff1-00-mp30ce7exoea.pike.replit.dev";
 
 // Helper to safely parse JSON responses
 export async function safeJsonParse<T>(response: Response): Promise<T> {
@@ -45,6 +45,7 @@ export async function uploadFile(
   formData.append("file", file);
   formData.append("type", type);
 
+  // Don't set Content-Type header - browser sets it automatically with correct boundary
   const response = await fetch(`${API_BASE}/claims/${claimId}/upload`, {
     method: "POST",
     body: formData,
