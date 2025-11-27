@@ -1,5 +1,5 @@
 // Centralized API Configuration
-export const API_BASE = "https://4e948ef7-1668-4c39-85db-342a63b048e3-00-124qj2yd3st31.sisko.replit.dev:8000";
+export const API_BASE = "https://4e948ef7-1668-4c39-85db-342a63b048e3-00-124qj2yd3st31.sisko.replit.dev";
 
 // Helper to safely parse JSON responses
 export async function safeJsonParse<T>(response: Response): Promise<T> {
