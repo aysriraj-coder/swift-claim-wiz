@@ -164,10 +164,19 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
       }
 
     } catch (error) {
-      toast.error("Analysis failed", {
-        description: error instanceof Error ? error.message : "Failed to analyze images"
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze images";
+      const isBackendError = errorMessage.includes('Backend') || errorMessage.includes('endpoint') || errorMessage.includes('404');
+      
+      toast.error(isBackendError ? "Connection Error" : "Analysis failed", {
+        description: errorMessage
       });
-      onStatusChange?.("awaiting_correct_image");
+      
+      // Only show "awaiting_correct_image" for actual validation errors, not backend issues
+      if (!isBackendError) {
+        onStatusChange?.("awaiting_correct_image");
+      } else {
+        onStatusChange?.("idle");
+      }
     } finally {
       setIsAnalyzing(false);
     }
