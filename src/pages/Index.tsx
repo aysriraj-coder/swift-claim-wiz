@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { StepIndicator } from "@/components/StepIndicator";
 import { ImageUploadStep } from "@/components/ImageUploadStep";
 import { DocumentUploadStep } from "@/components/DocumentUploadStep";
@@ -67,7 +67,7 @@ export default function Index() {
     }
   };
 
-  const handleRPAComplete = () => {
+  const handleRPAComplete = useCallback(() => {
     setStatus("rpa_completed");
     setTimeout(() => {
       if (decision?.decision === "Auto-Approve") {
@@ -76,7 +76,9 @@ export default function Index() {
         setStatus("claim_review");
       }
     }, 500);
-  };
+  }, [decision]);
+
+  const stableClaimData = useMemo(() => ({ visionResult, documentData, decision }), [visionResult, documentData, decision]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,7 +120,7 @@ export default function Index() {
                 <DecisionDisplay decision={decision} />
               ) : (
                 <RPAAnimation
-                  claimData={{ visionResult, documentData, decision }}
+                  claimData={stableClaimData}
                   onComplete={handleRPAComplete}
                 />
               )}
