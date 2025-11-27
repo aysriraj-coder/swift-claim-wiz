@@ -7,20 +7,29 @@ import { RPAAnimation } from "@/components/RPAAnimation";
 import { CustomerExperiencePanel } from "@/components/CustomerExperiencePanel";
 import { AgentStatusPanel } from "@/components/AgentStatusPanel";
 import { ClaimSummary } from "@/components/ClaimSummary";
+import { ClaimSummarySidebar } from "@/components/ClaimSummarySidebar";
+import { Navbar } from "@/components/Navbar";
 import { VisionAnalysisResult } from "@/lib/visionAgent";
 import { ExtractedDocumentData } from "@/lib/documentAgent";
 import { DecisionResult, getDecision } from "@/lib/decisionAgent";
 import { RPAResult } from "@/lib/rpaAgent";
 import { ClaimStatus } from "@/lib/customerExperienceAgent";
-import { Shield } from "lucide-react";
 import { toast } from "sonner";
 import { BackendStatusBanner } from "@/components/BackendStatusBanner";
 
 const STEPS = ["Upload Image", "Upload Documents", "Claim Decision"];
 
+interface AuditEvent {
+  id: string;
+  timestamp: Date;
+  type: "upload" | "analysis" | "decision" | "rpa" | "info";
+  message: string;
+}
+
 export default function Index() {
   const [currentStep, setCurrentStep] = useState(1);
   const [status, setStatus] = useState<ClaimStatus>("idle");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const [visionResult, setVisionResult] = useState<VisionAnalysisResult | null>(null);
   const [documentData, setDocumentData] = useState<ExtractedDocumentData | null>(null);
@@ -29,21 +38,49 @@ export default function Index() {
   const [showRPA, setShowRPA] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
 
-  const handleImageComplete = (result: VisionAnalysisResult) => {
+  // Track uploaded files for sidebar
+  const [uploadedImages, setUploadedImages] = useState<{ name: string; preview?: string }[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<{ name: string }[]>([]);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+
+  // Generate a claim ID
+  const claimId = useMemo(() => `CLM-${Date.now().toString(36).toUpperCase()}`, []);
+
+  const addAuditEvent = useCallback((type: AuditEvent["type"], message: string) => {
+    setAuditEvents(prev => [...prev, {
+      id: `${Date.now()}`,
+      timestamp: new Date(),
+      type,
+      message
+    }]);
+  }, []);
+
+  const handleImageComplete = (result: VisionAnalysisResult, images?: { name: string; preview?: string }[]) => {
     setVisionResult(result);
+    if (images) {
+      setUploadedImages(images);
+    }
     setStatus("image_analyzed");
+    addAuditEvent("analysis", `Vision analysis complete: ${result.damage_area}`);
+    
     setTimeout(() => {
       setCurrentStep(2);
       setStatus("extracting_documents");
     }, 1000);
   };
 
-  const handleDocumentComplete = async (data: ExtractedDocumentData) => {
+  const handleDocumentComplete = async (data: ExtractedDocumentData, docName?: string) => {
     setDocumentData(data);
+    if (docName) {
+      setUploadedDocuments(prev => [...prev, { name: docName }]);
+    }
     setStatus("documents_extracted");
+    addAuditEvent("analysis", `Document extracted: Policy ${data.policy_number}`);
     
     // Run decision engine
     setStatus("making_decision");
+    addAuditEvent("decision", "Running decision engine...");
+    
     try {
       const decisionResult = await getDecision({
         vision_analysis: visionResult,
@@ -52,6 +89,7 @@ export default function Index() {
       
       setDecision(decisionResult);
       setStatus("decision_made");
+      addAuditEvent("decision", `Decision: ${decisionResult.decision}`);
       
       setTimeout(() => {
         setCurrentStep(3);
@@ -60,10 +98,12 @@ export default function Index() {
         if (decisionResult.decision !== "SIU Flag") {
           setTimeout(() => {
             setStatus("executing_rpa");
+            addAuditEvent("rpa", "Starting RPA simulation...");
             setShowRPA(true);
           }, 2000);
         } else {
           setStatus("claim_flagged");
+          addAuditEvent("decision", "Claim flagged for SIU investigation");
           // Go directly to summary for SIU cases
           setTimeout(() => {
             setShowSummary(true);
@@ -80,18 +120,22 @@ export default function Index() {
   const handleRPAComplete = useCallback((result: RPAResult) => {
     setRpaResult(result);
     setStatus("rpa_completed");
+    addAuditEvent("rpa", "RPA simulation completed successfully");
+    
     setTimeout(() => {
       if (decision?.decision === "Auto-Approve") {
         setStatus("claim_approved");
+        addAuditEvent("decision", "Claim auto-approved");
       } else {
         setStatus("claim_review");
+        addAuditEvent("decision", "Claim sent for manual review");
       }
       // Show final summary
       setTimeout(() => {
         setShowSummary(true);
       }, 1000);
     }, 500);
-  }, [decision]);
+  }, [decision, addAuditEvent]);
 
   const stableClaimData = useMemo(() => ({ visionResult, documentData, decision }), [visionResult, documentData, decision]);
 
@@ -99,19 +143,7 @@ export default function Index() {
   if (showSummary) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card shadow-[var(--shadow-soft)]">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">ClaimFlow AI</h1>
-                <p className="text-sm text-muted-foreground">Claim Summary</p>
-              </div>
-            </div>
-          </div>
-        </header>
+        <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
         <main className="container mx-auto px-4 py-8">
           <ClaimSummary 
             visionResult={visionResult}
@@ -127,36 +159,26 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card shadow-[var(--shadow-soft)]">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Shield className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">ClaimFlow AI</h1>
-              <p className="text-sm text-muted-foreground">Intelligent Claim Automation</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className={`container mx-auto px-4 py-8 transition-all duration-300 ${sidebarOpen ? 'mr-80' : ''}`}>
         <StepIndicator currentStep={currentStep} steps={STEPS} />
 
-        <div className="mt-8">
+        <div className="mt-10">
           {currentStep === 1 && (
             <ImageUploadStep 
-              onComplete={handleImageComplete}
+              onComplete={(result, images) => handleImageComplete(result, images)}
               onStatusChange={setStatus}
+              onImagesChange={setUploadedImages}
             />
           )}
 
           {currentStep === 2 && (
             <DocumentUploadStep 
-              onComplete={handleDocumentComplete}
+              onComplete={(data, docName) => {
+                handleDocumentComplete(data, docName);
+              }}
             />
           )}
 
@@ -174,6 +196,21 @@ export default function Index() {
           )}
         </div>
       </main>
+
+      {/* Claim Summary Sidebar */}
+      <ClaimSummarySidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        claimId={claimId}
+        status={status}
+        currentStep={currentStep}
+        uploadedImages={uploadedImages}
+        uploadedDocuments={uploadedDocuments}
+        visionResult={visionResult}
+        documentData={documentData}
+        decision={decision}
+        auditEvents={auditEvents}
+      />
 
       {/* Agent Status Panel */}
       <AgentStatusPanel status={status} />

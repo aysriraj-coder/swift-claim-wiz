@@ -19,8 +19,9 @@ export interface MultiVisionSummary {
 }
 
 interface ImageUploadStepProps {
-  onComplete: (result: VisionAnalysisResult) => void;
+  onComplete: (result: VisionAnalysisResult, images?: { name: string; preview?: string }[]) => void;
   onStatusChange?: (status: ClaimStatus) => void;
+  onImagesChange?: (images: { name: string; preview?: string }[]) => void;
 }
 
 interface UploadedImage {
@@ -30,7 +31,7 @@ interface UploadedImage {
   status: "pending" | "analyzing" | "done";
 }
 
-export function ImageUploadStep({ onComplete, onStatusChange }: ImageUploadStepProps) {
+export function ImageUploadStep({ onComplete, onStatusChange, onImagesChange }: ImageUploadStepProps) {
   const backendOnline = useBackendStore((state) => state.backendOnline);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [description, setDescription] = useState("");
@@ -56,7 +57,11 @@ export function ImageUploadStep({ onComplete, onStatusChange }: ImageUploadStepP
       return { file, preview, status: "pending" as const };
     });
 
-    setImages(prev => [...prev, ...newImages]);
+    setImages(prev => {
+      const updated = [...prev, ...newImages];
+      onImagesChange?.(updated.map(img => ({ name: img.file.name, preview: img.preview })));
+      return updated;
+    });
     setMultiSummary(null);
     setMismatchDetails([]);
     
@@ -184,7 +189,7 @@ export function ImageUploadStep({ onComplete, onStatusChange }: ImageUploadStepP
       escalate_to_siu: false
     };
     
-    onComplete(combinedResult);
+    onComplete(combinedResult, images.map(img => ({ name: img.file.name, preview: img.preview })));
   };
 
   const clearAllImages = () => {
@@ -192,6 +197,7 @@ export function ImageUploadStep({ onComplete, onStatusChange }: ImageUploadStepP
     setImages([]);
     setMultiSummary(null);
     setMismatchDetails([]);
+    onImagesChange?.([]);
     onStatusChange?.("idle");
   };
 
