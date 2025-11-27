@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBackendStore } from "@/lib/backendStore";
 import { Upload, Image as ImageIcon, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +13,7 @@ interface ImageUploadStepProps {
 }
 
 export function ImageUploadStep({ onComplete }: ImageUploadStepProps) {
+  const backendOnline = useBackendStore((state) => state.backendOnline);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [description, setDescription] = useState("");
@@ -124,7 +126,7 @@ export function ImageUploadStep({ onComplete }: ImageUploadStepProps) {
 
         <Button
           onClick={handleAnalyze}
-          disabled={!selectedImage || isAnalyzing}
+          disabled={!selectedImage || isAnalyzing || !backendOnline}
           className="w-full"
           size="lg"
         >
