@@ -7,7 +7,7 @@ import { extractDocuments, ExtractedDocumentData } from "@/lib/documentAgent";
 import { toast } from "sonner";
 
 interface DocumentUploadStepProps {
-  onComplete: (data: ExtractedDocumentData) => void;
+  onComplete: (data: ExtractedDocumentData, docName?: string) => void;
 }
 
 export function DocumentUploadStep({ onComplete }: DocumentUploadStepProps) {
@@ -42,8 +42,8 @@ export function DocumentUploadStep({ onComplete }: DocumentUploadStepProps) {
   };
 
   const handleContinue = () => {
-    if (extractedData) {
-      onComplete(extractedData);
+    if (extractedData && selectedFile) {
+      onComplete(extractedData, selectedFile.name);
     }
   };
 
