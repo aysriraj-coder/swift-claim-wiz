@@ -1,7 +1,6 @@
 import { CheckCircle, AlertTriangle, AlertCircle, Brain } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { DecisionResult } from "@/lib/decisionAgent";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +17,8 @@ export function DecisionDisplay({ decision }: DecisionDisplayProps) {
         return <AlertTriangle className="w-12 h-12 text-warning" />;
       case "SIU Flag":
         return <AlertCircle className="w-12 h-12 text-destructive" />;
+      default:
+        return <Brain className="w-12 h-12 text-muted-foreground" />;
     }
   };
 
@@ -29,6 +30,8 @@ export function DecisionDisplay({ decision }: DecisionDisplayProps) {
         return "text-warning";
       case "SIU Flag":
         return "text-destructive";
+      default:
+        return "text-foreground";
     }
   };
 
@@ -40,19 +43,8 @@ export function DecisionDisplay({ decision }: DecisionDisplayProps) {
         return "bg-warning/10 border-warning/20";
       case "SIU Flag":
         return "bg-destructive/10 border-destructive/20";
-    }
-  };
-
-  const getThresholdExplanation = () => {
-    const riskPercent = decision.risk_score * 100;
-    const mismatchPercent = decision.mismatch_score * 100;
-    
-    if (decision.decision === "Auto-Approve") {
-      return `Risk score (${riskPercent.toFixed(0)}%) and mismatch score (${mismatchPercent.toFixed(0)}%) are both below approval thresholds.`;
-    } else if (decision.decision === "Manual Review") {
-      return `Risk score (${riskPercent.toFixed(0)}%) or mismatch score (${mismatchPercent.toFixed(0)}%) exceeded auto-approval threshold but not SIU threshold.`;
-    } else {
-      return `Risk score (${riskPercent.toFixed(0)}%) or mismatch score (${mismatchPercent.toFixed(0)}%) exceeded SIU investigation threshold.`;
+      default:
+        return "bg-muted border-border";
     }
   };
 
@@ -69,6 +61,7 @@ export function DecisionDisplay({ decision }: DecisionDisplayProps) {
             {decision.decision === "Auto-Approve" && "Your claim has been automatically approved"}
             {decision.decision === "Manual Review" && "Your claim requires additional review"}
             {decision.decision === "SIU Flag" && "Your claim has been flagged for investigation"}
+            {!["Auto-Approve", "Manual Review", "SIU Flag"].includes(decision.decision) && decision.decision}
           </p>
         </div>
 
@@ -80,60 +73,28 @@ export function DecisionDisplay({ decision }: DecisionDisplayProps) {
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Decision Agent Analysis</h3>
-              <p className="text-sm text-muted-foreground">Threshold-based risk assessment</p>
+              <p className="text-sm text-muted-foreground">AI-powered risk assessment</p>
             </div>
           </div>
 
-          {/* Risk Scores */}
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Risk Score</span>
-                <Badge variant={decision.risk_score > 0.7 ? "destructive" : decision.risk_score > 0.4 ? "outline" : "secondary"}>
-                  {(decision.risk_score * 100).toFixed(1)}%
-                </Badge>
+          {/* Approved Amount */}
+          {decision.approvedAmount !== undefined && (
+            <div className="mb-4 p-3 bg-muted rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Approved Amount</span>
+                <span className="text-lg font-bold text-foreground">
+                  ₹{decision.approvedAmount.toLocaleString()}
+                </span>
               </div>
-              <Progress 
-                value={decision.risk_score * 100} 
-                className={cn(
-                  "h-2",
-                  decision.risk_score > 0.7 ? "[&>div]:bg-destructive" : 
-                  decision.risk_score > 0.4 ? "[&>div]:bg-warning" : "[&>div]:bg-success"
-                )}
-              />
             </div>
-
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Mismatch Score</span>
-                <Badge variant={decision.mismatch_score > 0.6 ? "destructive" : decision.mismatch_score > 0.3 ? "outline" : "secondary"}>
-                  {(decision.mismatch_score * 100).toFixed(1)}%
-                </Badge>
-              </div>
-              <Progress 
-                value={decision.mismatch_score * 100} 
-                className={cn(
-                  "h-2",
-                  decision.mismatch_score > 0.6 ? "[&>div]:bg-destructive" : 
-                  decision.mismatch_score > 0.3 ? "[&>div]:bg-warning" : "[&>div]:bg-success"
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Threshold Explanation */}
-          <div className="mt-4 p-3 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              <strong>Threshold Logic:</strong> {getThresholdExplanation()}
-            </p>
-          </div>
+          )}
         </Card>
 
         {/* Reasoning */}
         <div className="space-y-2">
           <h3 className="font-semibold text-foreground">Reasoning</h3>
           <p className="text-muted-foreground bg-muted p-4 rounded-lg">
-            {decision.reasoning}
+            {decision.reason || "No additional reasoning provided."}
           </p>
         </div>
 

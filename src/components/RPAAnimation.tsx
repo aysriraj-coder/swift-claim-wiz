@@ -36,8 +36,8 @@ export function RPAAnimation({ claimId, claimData, onComplete }: RPAAnimationPro
           setCurrentStep(i + 1);
         }
 
-        // Call actual RPA backend ONCE with claimId
-        const result = await simulateRPA(claimId, claimData);
+        // Call actual RPA backend ONCE with claimId only
+        const result = await simulateRPA(claimId);
         
         setIsComplete(true);
         
@@ -52,12 +52,11 @@ export function RPAAnimation({ claimId, claimData, onComplete }: RPAAnimationPro
         });
         // Still complete with a fallback result
         const fallbackResult: RPAResult = {
+          status: "failed",
           steps: RPA_STEPS.map((desc, i) => ({
             step: i + 1,
-            description: desc,
-            status: "completed" as const
-          })),
-          overall_status: "failed"
+            description: desc
+          }))
         };
         setIsComplete(true);
         setTimeout(() => {

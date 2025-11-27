@@ -30,7 +30,7 @@ export async function createClaim(): Promise<string> {
 }
 
 // Re-export all agent functions for convenience
-export { analyzeImage, uploadImage, type VisionAnalysisResult } from './visionAgent';
+export { uploadImage, type VisionAnalysisResult } from './visionAgent';
 export { extractDocuments, type ExtractedDocumentData } from './documentAgent';
-export { getDecision, type DecisionResult, type DecisionPayload } from './decisionAgent';
+export { getDecision, type DecisionResult } from './decisionAgent';
 export { simulateRPA, type RPAResult, type RPAStep } from './rpaAgent';
