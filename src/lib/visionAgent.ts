@@ -8,24 +8,17 @@ export interface VisionAnalysisResult {
   error?: string;
 }
 
-export async function uploadImage(
-  claimId: string,
-  imageFile: File
-): Promise<{ metadata: VisionAnalysisResult; filename: string }> {
-
+// Analyze images that have been uploaded
+export async function analyzeImage(claimId: string): Promise<VisionAnalysisResult> {
   const backendOnline = useBackendStore.getState().backendOnline;
   if (!backendOnline) throw new Error("Backend offline.");
 
-  const formData = new FormData();
-  formData.append("file", imageFile);
-
-  const response = await fetch(`${API_BASE}/claims/${claimId}/upload`, {
+  const response = await fetch(`${API_BASE}/claims/${claimId}/analyze-image`, {
     method: "POST",
-    body: formData,
   });
 
   if (!response.ok) {
-    throw new Error(`Image upload failed: ${response.statusText}`);
+    throw new Error(`Image analysis failed: ${response.statusText}`);
   }
 
   return safeJsonParse(response);

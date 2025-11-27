@@ -1,33 +1,38 @@
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  CheckCircle, 
-  AlertTriangle, 
-  AlertCircle, 
-  Download, 
-  Eye, 
-  FileText, 
-  Brain, 
-  Bot, 
-  Users 
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, FileText, Scan, Gavel, Bot, RotateCcw, Download } from "lucide-react";
 import { VisionAnalysisResult } from "@/lib/visionAgent";
 import { ExtractedDocumentData } from "@/lib/documentAgent";
 import { DecisionResult } from "@/lib/decisionAgent";
 import { RPAResult } from "@/lib/rpaAgent";
-import { cn } from "@/lib/utils";
+import { CreateClaimPayload } from "@/lib/api";
 
 interface ClaimSummaryProps {
-  visionResult: VisionAnalysisResult | null;
-  documentData: ExtractedDocumentData | null;
-  decision: DecisionResult | null;
-  rpaResult: RPAResult | null;
+  claimId?: string | null;
+  claimInfo?: CreateClaimPayload | null;
+  visionResult?: VisionAnalysisResult | null;
+  documentData?: ExtractedDocumentData | null;
+  decision?: DecisionResult | null;
+  rpaResult?: RPAResult | null;
 }
 
-export function ClaimSummary({ visionResult, documentData, decision, rpaResult }: ClaimSummaryProps) {
+export function ClaimSummary({
+  claimId,
+  claimInfo,
+  visionResult,
+  documentData,
+  decision,
+  rpaResult
+}: ClaimSummaryProps) {
+  const handleNewClaim = () => {
+    window.location.reload();
+  };
+
   const handleDownload = () => {
     const summary = {
+      claimId,
+      claimInfo,
       timestamp: new Date().toISOString(),
       visionAnalysis: visionResult,
       documentExtraction: documentData,
@@ -39,225 +44,176 @@ export function ClaimSummary({ visionResult, documentData, decision, rpaResult }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `claim-summary-${Date.now()}.json`;
+    a.download = `claim-summary-${claimId || Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  const getDecisionIcon = () => {
-    switch (decision?.decision) {
-      case "Auto-Approve":
-        return <CheckCircle className="w-8 h-8 text-success" />;
-      case "Manual Review":
-        return <AlertTriangle className="w-8 h-8 text-warning" />;
-      case "SIU Flag":
-        return <AlertCircle className="w-8 h-8 text-destructive" />;
-      default:
-        return null;
-    }
-  };
-
-  const getDecisionColor = () => {
-    switch (decision?.decision) {
-      case "Auto-Approve":
-        return "text-success";
-      case "Manual Review":
-        return "text-warning";
-      case "SIU Flag":
-        return "text-destructive";
-      default:
-        return "text-foreground";
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <Card className="p-6 shadow-[var(--shadow-medium)]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {getDecisionIcon()}
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Claim Processing Complete</h1>
-              <p className="text-muted-foreground">All agents have completed their tasks</p>
-            </div>
-          </div>
-          <Badge 
-            variant="outline" 
-            className={cn("text-lg px-4 py-2", getDecisionColor())}
-          >
-            {decision?.decision || "Processing"}
-          </Badge>
+      <div className="text-center mb-8">
+        <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-10 h-10 text-success" />
         </div>
-      </Card>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Claim Processing Complete</h1>
+        <p className="text-muted-foreground">All workflow steps have been executed successfully</p>
+        {claimId && (
+          <Badge variant="outline" className="mt-2 text-lg">
+            Claim ID: {claimId}
+          </Badge>
+        )}
+      </div>
 
-      {/* Agent Results Grid */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Vision Agent Results */}
-        <Card className="p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Eye className="w-5 h-5 text-primary" />
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Claim Info */}
+        {claimInfo && (
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground">Claim Details</h3>
             </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Vision Agent</h3>
-              <p className="text-sm text-muted-foreground">Image Analysis</p>
-            </div>
-          </div>
-          {visionResult ? (
-            <div className="space-y-3">
+            <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Damage Zone</span>
+                <span className="text-muted-foreground">Customer:</span>
+                <span className="font-medium text-foreground">{claimInfo.customerName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Policy:</span>
+                <span className="font-medium text-foreground">{claimInfo.policyNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Company:</span>
+                <span className="font-medium text-foreground">{claimInfo.company}</span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Vision Analysis */}
+        {visionResult && (
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Scan className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground">Image Analysis</h3>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Severity:</span>
+                <Badge variant="secondary">{visionResult.damageSeverity}</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Zone:</span>
                 <span className="font-medium text-foreground">{visionResult.damageZone}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Severity</span>
-                <span className="font-medium text-foreground">{visionResult.damageSeverity}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Confidence</span>
+                <span className="text-muted-foreground">Confidence:</span>
                 <span className="font-medium text-foreground">{(visionResult.confidence * 100).toFixed(1)}%</span>
               </div>
             </div>
-          ) : (
-            <p className="text-muted-foreground">No vision data available</p>
-          )}
-        </Card>
+          </Card>
+        )}
 
-        {/* Document Agent Results */}
-        <Card className="p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-foreground" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Document Agent</h3>
-              <p className="text-sm text-muted-foreground">Data Extraction</p>
-            </div>
-          </div>
-          {documentData ? (
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Policy Number</span>
-                <span className="font-medium text-foreground">{documentData.policyNumber || "N/A"}</span>
+        {/* Document Extraction */}
+        {documentData && (
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-primary" />
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Claim Amount</span>
-                <span className="font-medium text-foreground">
-                  ₹{documentData.claimAmount?.toLocaleString() || "N/A"}
-                </span>
-              </div>
+              <h3 className="font-semibold text-foreground">Document Data</h3>
             </div>
-          ) : (
-            <p className="text-muted-foreground">No document data available</p>
-          )}
-        </Card>
+            <div className="space-y-2 text-sm">
+              {documentData.policyNumber && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Policy:</span>
+                  <span className="font-medium text-foreground">{documentData.policyNumber}</span>
+                </div>
+              )}
+              {documentData.claimAmount && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-medium text-foreground">₹{documentData.claimAmount.toLocaleString()}</span>
+                </div>
+              )}
+              {documentData.documentType && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Type:</span>
+                  <span className="font-medium text-foreground">{documentData.documentType}</span>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
 
-        {/* Decision Agent Results */}
-        <Card className="p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-accent/50 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-foreground" />
+        {/* Decision */}
+        {decision && (
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Gavel className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground">Decision</h3>
             </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Decision Agent</h3>
-              <p className="text-sm text-muted-foreground">Risk Assessment</p>
-            </div>
-          </div>
-          {decision ? (
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Decision</span>
-                <Badge className={cn(
-                  decision.decision === "Auto-Approve" && "bg-success/20 text-success",
-                  decision.decision === "Manual Review" && "bg-warning/20 text-warning",
-                  decision.decision === "SIU Flag" && "bg-destructive/20 text-destructive"
-                )}>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge
+                  variant={decision.decision === "APPROVE" ? "default" : decision.decision === "REJECT" ? "destructive" : "secondary"}
+                  className={decision.decision === "APPROVE" ? "bg-success" : ""}
+                >
                   {decision.decision}
                 </Badge>
               </div>
-              {decision.approvedAmount !== undefined && (
+              <div>
+                <span className="text-muted-foreground">Reason:</span>
+                <p className="font-medium text-foreground mt-1">{decision.reason}</p>
+              </div>
+              {decision.approvedAmount && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Approved Amount</span>
-                  <span className="font-medium text-foreground">₹{decision.approvedAmount.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Approved:</span>
+                  <span className="font-medium text-success">₹{decision.approvedAmount.toLocaleString()}</span>
                 </div>
               )}
-              <div className="pt-2 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-1">Reason</p>
-                <p className="text-sm text-foreground">{decision.reason || "N/A"}</p>
-              </div>
             </div>
-          ) : (
-            <p className="text-muted-foreground">No decision data available</p>
-          )}
-        </Card>
+          </Card>
+        )}
 
-        {/* RPA Agent Results */}
-        <Card className="p-6 shadow-[var(--shadow-soft)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-              <Bot className="w-5 h-5 text-success" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">RPA Agent</h3>
-              <p className="text-sm text-muted-foreground">System Automation</p>
-            </div>
-          </div>
-          {rpaResult ? (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant={rpaResult.status === "success" ? "default" : "destructive"}>
-                  {rpaResult.status === "success" ? "Completed" : rpaResult.status}
-                </Badge>
+        {/* RPA Result */}
+        {rpaResult && (
+          <Card className="p-6 md:col-span-2">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Bot className="w-5 h-5 text-primary" />
               </div>
-              <div className="space-y-2">
-                {rpaResult.steps.map((step, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <span className="text-foreground">{step.description}</span>
-                  </div>
-                ))}
-              </div>
+              <h3 className="font-semibold text-foreground">RPA Workflow</h3>
+              <Badge variant="default" className="bg-success ml-auto">{rpaResult.status}</Badge>
             </div>
-          ) : (
-            <p className="text-muted-foreground">RPA not executed (SIU flagged)</p>
-          )}
-        </Card>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {rpaResult.steps.map((step, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
+                  <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+                  <span className="text-foreground truncate">{step.description}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
 
-      {/* Customer Experience Summary */}
-      <Card className="p-6 shadow-[var(--shadow-medium)]">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Users className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-foreground">Customer Experience Agent</h3>
-            <p className="text-sm text-muted-foreground">Final Status</p>
-          </div>
-        </div>
-        <div className={cn(
-          "p-4 rounded-lg border",
-          decision?.decision === "Auto-Approve" && "bg-success/10 border-success/20",
-          decision?.decision === "Manual Review" && "bg-warning/10 border-warning/20",
-          decision?.decision === "SIU Flag" && "bg-destructive/10 border-destructive/20"
-        )}>
-          <p className={cn("font-medium", getDecisionColor())}>
-            {decision?.decision === "Auto-Approve" && "Your claim has been automatically approved and processed."}
-            {decision?.decision === "Manual Review" && "Your claim requires additional review by our team. We'll contact you within 24-48 hours."}
-            {decision?.decision === "SIU Flag" && "Your claim has been flagged for special investigation. Our team will reach out for more information."}
-          </p>
-        </div>
-      </Card>
-
-      {/* Download Button */}
-      <div className="flex justify-center">
-        <Button onClick={handleDownload} size="lg" className="gap-2">
-          <Download className="w-5 h-5" />
-          Download Claim Summary
+      <div className="flex justify-center gap-4 pt-4">
+        <Button onClick={handleDownload} variant="outline" size="lg">
+          <Download className="w-4 h-4 mr-2" />
+          Download Summary
+        </Button>
+        <Button onClick={handleNewClaim} size="lg">
+          <RotateCcw className="w-4 h-4 mr-2" />
+          Start New Claim
         </Button>
       </div>
     </div>
