@@ -89,7 +89,7 @@ export default function Index() {
       setUploadedImages(images);
     }
     setStatus("image_analyzed");
-    addAuditEvent("analysis", `Vision analysis complete: ${result.damage_area}`);
+    addAuditEvent("analysis", `Vision analysis complete: ${result.damageZone}`);
     
     setTimeout(() => {
       setCurrentStep(2);
@@ -108,17 +108,14 @@ export default function Index() {
       setUploadedDocuments(prev => [...prev, { name: docName }]);
     }
     setStatus("documents_extracted");
-    addAuditEvent("analysis", `Document extracted: Policy ${data.policy_number}`);
+    addAuditEvent("analysis", `Document extracted: Policy ${data.policyNumber || "N/A"}`);
     
     // Run decision engine
     setStatus("making_decision");
     addAuditEvent("decision", "Running decision engine...");
     
     try {
-      const decisionResult = await getDecision(claimId, {
-        vision_analysis: visionResult,
-        document_data: data
-      });
+      const decisionResult = await getDecision(claimId);
       
       setDecision(decisionResult);
       setStatus("decision_made");

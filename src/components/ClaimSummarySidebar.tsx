@@ -202,8 +202,8 @@ export function ClaimSummarySidebar({
                     <Card className="p-3 bg-muted/30 border-0">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Damage Area:</span>
-                          <span className="text-foreground font-medium">{visionResult.damage_area}</span>
+                          <span className="text-muted-foreground">Damage Zone:</span>
+                          <span className="text-foreground font-medium">{visionResult.damageZone}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Confidence:</span>
@@ -225,11 +225,11 @@ export function ClaimSummarySidebar({
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Policy:</span>
-                          <span className="text-foreground font-medium">{documentData.policy_number}</span>
+                          <span className="text-foreground font-medium">{documentData.policyNumber || "N/A"}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Amount:</span>
-                          <span className="text-foreground font-medium">${documentData.claim_amount?.toLocaleString()}</span>
+                          <span className="text-foreground font-medium">₹{documentData.claimAmount?.toLocaleString() || "N/A"}</span>
                         </div>
                       </div>
                     </Card>

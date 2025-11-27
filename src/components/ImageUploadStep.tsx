@@ -6,12 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { analyzeImage, VisionAnalysisResult } from "@/lib/visionAgent";
+import { uploadImage, VisionAnalysisResult } from "@/lib/visionAgent";
 import { ClaimStatus } from "@/lib/customerExperienceAgent";
 import { toast } from "sonner";
 
 export interface MultiVisionSummary {
-  overall_damage_area: string;
+  overall_damage_zone: string;
   mismatches: number;
   needs_more_images: boolean;
   escalate_to_siu: boolean;
@@ -108,41 +108,38 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
         updatedImages[i].status = "analyzing";
         setImages([...updatedImages]);
 
-        const result = await analyzeImage(claimId, updatedImages[i].file, description);
+        const response = await uploadImage(claimId, updatedImages[i].file);
+        const result = response.metadata;
         updatedImages[i].result = result;
         updatedImages[i].status = "done";
         results.push(result);
         setImages([...updatedImages]);
       }
 
-      const damageAreas = results.map(r => r.damage_area.toLowerCase());
-      const uniqueAreas = [...new Set(damageAreas)];
-      const mismatchCount = results.filter(r => r.mismatch_detected).length;
-      const needsMore = results.some(r => r.requires_more_images);
+      const damageZones = results.map(r => r.damageZone?.toLowerCase() || "unknown");
+      const uniqueZones = [...new Set(damageZones)];
       const lowConfidence = results.filter(r => r.confidence < 0.6);
+      const hasErrors = results.some(r => r.error);
 
       results.forEach((r, idx) => {
-        if (r.mismatch_detected) {
-          details.push(`Image ${idx + 1}: You said "${description}" but AI detected "${r.damage_area}"`);
+        if (r.error) {
+          details.push(`Image ${idx + 1}: ${r.error}`);
         }
         if (r.confidence < 0.6) {
           details.push(`Image ${idx + 1}: Low confidence (${(r.confidence * 100).toFixed(0)}%), please reupload`);
         }
-        if (r.requires_more_images) {
-          details.push(`Image ${idx + 1}: Angle unclear — need clearer view`);
-        }
       });
 
-      if (uniqueAreas.length > 1) {
-        details.push(`Images show different damage areas: ${uniqueAreas.join(", ")}`);
+      if (uniqueZones.length > 1 && !uniqueZones.includes("unknown")) {
+        details.push(`Images show different damage zones: ${uniqueZones.join(", ")}`);
       }
 
-      const escalate = mismatchCount >= 2 || results.some(r => r.escalate_to_siu);
+      const escalate = hasErrors || lowConfidence.length >= 2;
 
       const summary: MultiVisionSummary = {
-        overall_damage_area: uniqueAreas.length === 1 ? uniqueAreas[0] : uniqueAreas.join(" / "),
-        mismatches: mismatchCount,
-        needs_more_images: needsMore || lowConfidence.length > 0 || uniqueAreas.length > 1,
+        overall_damage_zone: uniqueZones.length === 1 ? uniqueZones[0] : uniqueZones.join(" / "),
+        mismatches: details.length,
+        needs_more_images: lowConfidence.length > 0 || uniqueZones.length > 1,
         escalate_to_siu: escalate,
         individual_results: results
       };
@@ -153,7 +150,7 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
       if (summary.needs_more_images || summary.mismatches > 0) {
         onStatusChange?.("mismatch_detected");
         toast.warning("Issues detected", {
-          description: "Please review the mismatch details below"
+          description: "Please review the details below"
         });
       } else if (summary.escalate_to_siu) {
         onStatusChange?.("claim_flagged");
@@ -171,7 +168,6 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
         description: errorMessage
       });
       
-      // Only show "awaiting_correct_image" for actual validation errors, not backend issues
       if (!isBackendError) {
         onStatusChange?.("awaiting_correct_image");
       } else {
@@ -185,18 +181,15 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
   const canProceed = multiSummary && 
     !multiSummary.needs_more_images && 
     multiSummary.mismatches === 0 && 
-    !multiSummary.escalate_to_siu &&
-    !multiSummary.individual_results.some(r => r.mismatch_detected || r.requires_more_images);
+    !multiSummary.escalate_to_siu;
 
   const handleProceed = () => {
     if (!canProceed || !multiSummary) return;
     
     const combinedResult: VisionAnalysisResult = {
-      damage_area: multiSummary.overall_damage_area,
+      damageZone: multiSummary.overall_damage_zone,
+      damageSeverity: multiSummary.individual_results[0]?.damageSeverity || "moderate",
       confidence: multiSummary.individual_results.reduce((sum, r) => sum + r.confidence, 0) / multiSummary.individual_results.length,
-      mismatch_detected: false,
-      requires_more_images: false,
-      escalate_to_siu: false
     };
     
     onComplete(combinedResult, images.map(img => ({ name: img.file.name, preview: img.preview })));
@@ -214,13 +207,13 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
   const getImageBadge = (img: UploadedImage) => {
     if (!img.result) return null;
     
-    if (img.result.mismatch_detected) {
-      return <Badge variant="destructive" className="absolute top-2 right-2">Mismatch</Badge>;
+    if (img.result.error) {
+      return <Badge variant="destructive" className="absolute top-2 right-2">Error</Badge>;
     }
     if (img.result.confidence < 0.6) {
       return <Badge variant="outline" className="absolute top-2 right-2 bg-warning/20 text-warning border-warning">Low Confidence</Badge>;
     }
-    return <Badge variant="secondary" className="absolute top-2 right-2 bg-success/20 text-success border-success">Match</Badge>;
+    return <Badge variant="secondary" className="absolute top-2 right-2 bg-success/20 text-success border-success">OK</Badge>;
   };
 
   return (
@@ -257,7 +250,7 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
               </button>
               {img.result && (
                 <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {img.result.damage_area} ({(img.result.confidence * 100).toFixed(0)}%)
+                  {img.result.damageZone} ({(img.result.confidence * 100).toFixed(0)}%)
                 </p>
               )}
             </div>
@@ -320,7 +313,7 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
           <Card className="p-4 border-warning/20 bg-warning/5">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-5 h-5 text-warning" />
-              <h4 className="font-semibold text-foreground">Mismatch Details</h4>
+              <h4 className="font-semibold text-foreground">Issues Detected</h4>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex gap-2">
@@ -335,7 +328,7 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
               {multiSummary && multiSummary.needs_more_images && (
                 <div className="bg-destructive/10 rounded p-3 mt-3">
                   <p className="text-destructive font-medium text-sm">
-                    Action: Please upload clearer images that match your description.
+                    Action: Please upload clearer images.
                   </p>
                 </div>
               )}
@@ -351,8 +344,8 @@ export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesC
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <span className="text-muted-foreground">Damage Area:</span>
-                <p className="font-medium text-foreground">{multiSummary.overall_damage_area}</p>
+                <span className="text-muted-foreground">Damage Zone:</span>
+                <p className="font-medium text-foreground">{multiSummary.overall_damage_zone}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Images Analyzed:</span>

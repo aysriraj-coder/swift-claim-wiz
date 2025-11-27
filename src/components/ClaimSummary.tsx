@@ -109,18 +109,16 @@ export function ClaimSummary({ visionResult, documentData, decision, rpaResult }
           {visionResult ? (
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Damage Area</span>
-                <span className="font-medium text-foreground">{visionResult.damage_area}</span>
+                <span className="text-muted-foreground">Damage Zone</span>
+                <span className="font-medium text-foreground">{visionResult.damageZone}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Severity</span>
+                <span className="font-medium text-foreground">{visionResult.damageSeverity}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Confidence</span>
                 <span className="font-medium text-foreground">{(visionResult.confidence * 100).toFixed(1)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mismatch Detected</span>
-                <Badge variant={visionResult.mismatch_detected ? "destructive" : "secondary"}>
-                  {visionResult.mismatch_detected ? "Yes" : "No"}
-                </Badge>
               </div>
             </div>
           ) : (
@@ -143,19 +141,13 @@ export function ClaimSummary({ visionResult, documentData, decision, rpaResult }
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Policy Number</span>
-                <span className="font-medium text-foreground">{documentData.policy_number}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Claimant</span>
-                <span className="font-medium text-foreground">{documentData.claimant_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Vehicle</span>
-                <span className="font-medium text-foreground">{documentData.vehicle_make} {documentData.vehicle_model}</span>
+                <span className="font-medium text-foreground">{documentData.policyNumber || "N/A"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Claim Amount</span>
-                <span className="font-medium text-foreground">₹{documentData.claim_amount.toLocaleString()}</span>
+                <span className="font-medium text-foreground">
+                  ₹{documentData.claimAmount?.toLocaleString() || "N/A"}
+                </span>
               </div>
             </div>
           ) : (
@@ -177,16 +169,24 @@ export function ClaimSummary({ visionResult, documentData, decision, rpaResult }
           {decision ? (
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Risk Score</span>
-                <span className="font-medium text-foreground">{(decision.risk_score * 100).toFixed(1)}%</span>
+                <span className="text-muted-foreground">Decision</span>
+                <Badge className={cn(
+                  decision.decision === "Auto-Approve" && "bg-success/20 text-success",
+                  decision.decision === "Manual Review" && "bg-warning/20 text-warning",
+                  decision.decision === "SIU Flag" && "bg-destructive/20 text-destructive"
+                )}>
+                  {decision.decision}
+                </Badge>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mismatch Score</span>
-                <span className="font-medium text-foreground">{(decision.mismatch_score * 100).toFixed(1)}%</span>
-              </div>
+              {decision.approvedAmount !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Approved Amount</span>
+                  <span className="font-medium text-foreground">₹{decision.approvedAmount.toLocaleString()}</span>
+                </div>
+              )}
               <div className="pt-2 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-1">Reasoning</p>
-                <p className="text-sm text-foreground">{decision.reasoning}</p>
+                <p className="text-sm text-muted-foreground mb-1">Reason</p>
+                <p className="text-sm text-foreground">{decision.reason || "N/A"}</p>
               </div>
             </div>
           ) : (
@@ -209,8 +209,8 @@ export function ClaimSummary({ visionResult, documentData, decision, rpaResult }
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Status</span>
-                <Badge variant={rpaResult.overall_status === "success" ? "default" : "destructive"}>
-                  {rpaResult.overall_status === "success" ? "Completed" : "Failed"}
+                <Badge variant={rpaResult.status === "success" ? "default" : "destructive"}>
+                  {rpaResult.status === "success" ? "Completed" : rpaResult.status}
                 </Badge>
               </div>
               <div className="space-y-2">

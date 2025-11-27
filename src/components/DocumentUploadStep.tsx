@@ -100,24 +100,20 @@ export function DocumentUploadStep({ claimId, onComplete }: DocumentUploadStepPr
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-muted-foreground">Policy Number:</span>
-                  <p className="font-medium text-foreground">{extractedData.policy_number}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Claimant Name:</span>
-                  <p className="font-medium text-foreground">{extractedData.claimant_name}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Vehicle:</span>
-                  <p className="font-medium text-foreground">{extractedData.vehicle_make} {extractedData.vehicle_model}</p>
+                  <p className="font-medium text-foreground">{extractedData.policyNumber || "N/A"}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Claim Amount:</span>
-                  <p className="font-medium text-foreground">₹{extractedData.claim_amount?.toLocaleString() ?? 'N/A'}</p>
+                  <p className="font-medium text-foreground">₹{extractedData.claimAmount?.toLocaleString() ?? 'N/A'}</p>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Damage Notes:</span>
-                  <p className="font-medium text-foreground">{extractedData.damage_notes}</p>
-                </div>
+                {extractedData.extracted && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Extracted Info:</span>
+                    <p className="font-medium text-foreground text-xs mt-1">
+                      {JSON.stringify(extractedData.extracted, null, 2)}
+                    </p>
+                  </div>
+                )}
               </div>
             </Card>
           )}
