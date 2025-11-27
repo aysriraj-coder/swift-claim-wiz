@@ -1,6 +1,5 @@
 import { useBackendStore } from './backendStore';
-
-const API_BASE = "https://4e948ef7-1668-4c39-85db-342a63b048e3-00-124qj2yd3st31.sisko.replit.dev:8000";
+import { API_BASE, safeJsonParse } from './api';
 
 export interface DecisionResult {
   decision: "Auto-Approve" | "Manual Review" | "SIU Flag";
@@ -14,14 +13,14 @@ export interface DecisionPayload {
   document_data: any;
 }
 
-export async function getDecision(payload: DecisionPayload): Promise<DecisionResult> {
+export async function getDecision(claimId: string, payload: DecisionPayload): Promise<DecisionResult> {
   const backendOnline = useBackendStore.getState().backendOnline;
   
   if (!backendOnline) {
     throw new Error('Backend is offline. Please start the Replit server.');
   }
 
-  const response = await fetch(`${API_BASE}/decision-engine`, {
+  const response = await fetch(`${API_BASE}/claims/${claimId}/decision`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -33,5 +32,5 @@ export async function getDecision(payload: DecisionPayload): Promise<DecisionRes
     throw new Error(`Decision engine failed: ${response.statusText}`);
   }
 
-  return response.json();
+  return safeJsonParse<DecisionResult>(response);
 }

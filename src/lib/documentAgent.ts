@@ -1,6 +1,5 @@
 import { useBackendStore } from './backendStore';
-
-const API_BASE = "https://4e948ef7-1668-4c39-85db-342a63b048e3-00-124qj2yd3st31.sisko.replit.dev:8000";
+import { API_BASE, safeJsonParse } from './api';
 
 export interface ExtractedDocumentData {
   policy_number: string;
@@ -11,7 +10,7 @@ export interface ExtractedDocumentData {
   claim_amount: number;
 }
 
-export async function extractDocuments(documentFile: File): Promise<ExtractedDocumentData> {
+export async function extractDocuments(claimId: string, documentFile: File): Promise<ExtractedDocumentData> {
   const backendOnline = useBackendStore.getState().backendOnline;
   
   if (!backendOnline) {
@@ -19,9 +18,9 @@ export async function extractDocuments(documentFile: File): Promise<ExtractedDoc
   }
 
   const formData = new FormData();
-  formData.append('document', documentFile);
+  formData.append('file', documentFile);
 
-  const response = await fetch(`${API_BASE}/extract-documents`, {
+  const response = await fetch(`${API_BASE}/claims/${claimId}/extract-docs`, {
     method: 'POST',
     body: formData,
   });
@@ -30,5 +29,5 @@ export async function extractDocuments(documentFile: File): Promise<ExtractedDoc
     throw new Error(`Document extraction failed: ${response.statusText}`);
   }
 
-  return response.json();
+  return safeJsonParse<ExtractedDocumentData>(response);
 }

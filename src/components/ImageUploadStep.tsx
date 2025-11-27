@@ -19,6 +19,7 @@ export interface MultiVisionSummary {
 }
 
 interface ImageUploadStepProps {
+  claimId: string;
   onComplete: (result: VisionAnalysisResult, images?: { name: string; preview?: string }[]) => void;
   onStatusChange?: (status: ClaimStatus) => void;
   onImagesChange?: (images: { name: string; preview?: string }[]) => void;
@@ -31,7 +32,7 @@ interface UploadedImage {
   status: "pending" | "analyzing" | "done";
 }
 
-export function ImageUploadStep({ onComplete, onStatusChange, onImagesChange }: ImageUploadStepProps) {
+export function ImageUploadStep({ claimId, onComplete, onStatusChange, onImagesChange }: ImageUploadStepProps) {
   const backendOnline = useBackendStore((state) => state.backendOnline);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [description, setDescription] = useState("");
@@ -107,7 +108,7 @@ export function ImageUploadStep({ onComplete, onStatusChange, onImagesChange }: 
         updatedImages[i].status = "analyzing";
         setImages([...updatedImages]);
 
-        const result = await analyzeImage(updatedImages[i].file, description);
+        const result = await analyzeImage(claimId, updatedImages[i].file, description);
         updatedImages[i].result = result;
         updatedImages[i].status = "done";
         results.push(result);

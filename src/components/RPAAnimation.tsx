@@ -3,8 +3,10 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { simulateRPA, RPAResult } from "@/lib/rpaAgent";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface RPAAnimationProps {
+  claimId: string;
   claimData: any;
   onComplete: (result: RPAResult) => void;
 }
@@ -16,7 +18,7 @@ const RPA_STEPS = [
   "Updating claim status"
 ];
 
-export function RPAAnimation({ claimData, onComplete }: RPAAnimationProps) {
+export function RPAAnimation({ claimId, claimData, onComplete }: RPAAnimationProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const hasRun = useRef(false);
@@ -34,8 +36,8 @@ export function RPAAnimation({ claimData, onComplete }: RPAAnimationProps) {
           setCurrentStep(i + 1);
         }
 
-        // Call actual RPA backend ONCE
-        const result = await simulateRPA(claimData);
+        // Call actual RPA backend ONCE with claimId
+        const result = await simulateRPA(claimId, claimData);
         
         setIsComplete(true);
         
@@ -45,6 +47,9 @@ export function RPAAnimation({ claimData, onComplete }: RPAAnimationProps) {
         }, 1000);
       } catch (error) {
         console.error("RPA failed:", error);
+        toast.error("RPA simulation failed", {
+          description: error instanceof Error ? error.message : "Failed to run RPA"
+        });
         // Still complete with a fallback result
         const fallbackResult: RPAResult = {
           steps: RPA_STEPS.map((desc, i) => ({
