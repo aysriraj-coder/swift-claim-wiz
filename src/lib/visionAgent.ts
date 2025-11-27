@@ -1,3 +1,5 @@
+import { useBackendStore } from './backendStore';
+
 const API_BASE = "https://4e94a8e7-1668-4c39-85db-342a63b048e3-00-124qi2yd3st31.sisko.replit.dev:8000";
 
 export interface VisionAnalysisResult {
@@ -9,6 +11,12 @@ export interface VisionAnalysisResult {
 }
 
 export async function analyzeImage(imageFile: File, userDescription?: string): Promise<VisionAnalysisResult> {
+  const backendOnline = useBackendStore.getState().backendOnline;
+  
+  if (!backendOnline) {
+    throw new Error('Backend is offline. Please start the Replit server.');
+  }
+
   const formData = new FormData();
   formData.append('image', imageFile);
   if (userDescription) {

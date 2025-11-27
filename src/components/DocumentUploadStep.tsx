@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBackendStore } from "@/lib/backendStore";
 import { FileText, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ interface DocumentUploadStepProps {
 }
 
 export function DocumentUploadStep({ onComplete }: DocumentUploadStepProps) {
+  const backendOnline = useBackendStore((state) => state.backendOnline);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -94,7 +96,7 @@ export function DocumentUploadStep({ onComplete }: DocumentUploadStepProps) {
 
         <Button
           onClick={handleExtract}
-          disabled={!selectedFile || isProcessing}
+          disabled={!selectedFile || isProcessing || !backendOnline}
           className="w-full"
           size="lg"
         >
