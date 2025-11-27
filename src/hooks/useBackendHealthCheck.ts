@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useBackendStore } from '@/lib/backendStore';
-
-const API_BASE = "https://4e948ef7-1668-4c39-85db-342a63b048e3-00-124qj2yd3st31.sisko.replit.dev:8000";
+import { API_BASE } from '@/lib/api';
 
 export function useBackendHealthCheck() {
   const setBackendOnline = useBackendStore((state) => state.setBackendOnline);
@@ -11,15 +10,23 @@ export function useBackendHealthCheck() {
       try {
         const response = await fetch(`${API_BASE}/ping`, {
           method: 'GET',
+          // Add timeout to prevent hanging
+          signal: AbortSignal.timeout(5000),
         });
         
         if (response.ok) {
-          const data = await response.json();
-          setBackendOnline(data.status === 'ok');
+          try {
+            const data = await response.json();
+            setBackendOnline(data.status === 'ok');
+          } catch {
+            // If JSON parse fails but response was ok, assume backend is up
+            setBackendOnline(true);
+          }
         } else {
           setBackendOnline(false);
         }
       } catch (error) {
+        console.warn('Backend health check failed:', error);
         setBackendOnline(false);
       }
     };
@@ -27,8 +34,8 @@ export function useBackendHealthCheck() {
     // Check immediately on mount
     checkHealth();
 
-    // Check every 4 seconds
-    const interval = setInterval(checkHealth, 4000);
+    // Check every 10 seconds (reduced frequency)
+    const interval = setInterval(checkHealth, 10000);
 
     return () => clearInterval(interval);
   }, [setBackendOnline]);
