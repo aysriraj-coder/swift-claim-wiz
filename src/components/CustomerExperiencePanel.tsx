@@ -39,7 +39,7 @@ export function CustomerExperiencePanel({ status }: CustomerExperiencePanelProps
   // Map status to human-friendly step indicator
   const getStepIndicator = () => {
     const steps = [
-      { key: "image", label: "Image Analysis", statuses: ["analyzing_image", "image_analyzed"] },
+      { key: "image", label: "Image Analysis", statuses: ["uploading_images", "analyzing_image", "mismatch_detected", "awaiting_correct_image", "image_analyzed"] },
       { key: "document", label: "Document Extraction", statuses: ["extracting_documents", "documents_extracted"] },
       { key: "decision", label: "Decision Engine", statuses: ["making_decision", "decision_made"] },
       { key: "rpa", label: "System Automation", statuses: ["executing_rpa", "rpa_completed"] },
