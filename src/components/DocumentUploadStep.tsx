@@ -7,10 +7,11 @@ import { extractDocuments, ExtractedDocumentData } from "@/lib/documentAgent";
 import { toast } from "sonner";
 
 interface DocumentUploadStepProps {
+  claimId: string;
   onComplete: (data: ExtractedDocumentData, docName?: string) => void;
 }
 
-export function DocumentUploadStep({ onComplete }: DocumentUploadStepProps) {
+export function DocumentUploadStep({ claimId, onComplete }: DocumentUploadStepProps) {
   const backendOnline = useBackendStore((state) => state.backendOnline);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,7 +30,7 @@ export function DocumentUploadStep({ onComplete }: DocumentUploadStepProps) {
 
     setIsProcessing(true);
     try {
-      const result = await extractDocuments(selectedFile);
+      const result = await extractDocuments(claimId, selectedFile);
       setExtractedData(result);
       toast.success("Documents processed successfully");
     } catch (error) {
@@ -111,7 +112,7 @@ export function DocumentUploadStep({ onComplete }: DocumentUploadStepProps) {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Claim Amount:</span>
-                  <p className="font-medium text-foreground">₹{extractedData.claim_amount.toLocaleString()}</p>
+                  <p className="font-medium text-foreground">₹{extractedData.claim_amount?.toLocaleString() ?? 'N/A'}</p>
                 </div>
                 <div className="col-span-2">
                   <span className="text-muted-foreground">Damage Notes:</span>

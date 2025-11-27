@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { StepIndicator } from "@/components/StepIndicator";
 import { ImageUploadStep } from "@/components/ImageUploadStep";
 import { DocumentUploadStep } from "@/components/DocumentUploadStep";
@@ -16,6 +16,8 @@ import { RPAResult } from "@/lib/rpaAgent";
 import { ClaimStatus } from "@/lib/customerExperienceAgent";
 import { toast } from "sonner";
 import { BackendStatusBanner } from "@/components/BackendStatusBanner";
+import { useBackendStore } from "@/lib/backendStore";
+import { createClaim } from "@/lib/api";
 
 const STEPS = ["Upload Image", "Upload Documents", "Claim Decision"];
 
@@ -43,8 +45,10 @@ export default function Index() {
   const [uploadedDocuments, setUploadedDocuments] = useState<{ name: string }[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
 
-  // Generate a claim ID
-  const claimId = useMemo(() => `CLM-${Date.now().toString(36).toUpperCase()}`, []);
+  // Claim ID from global store
+  const claimId = useBackendStore((state) => state.claimId);
+  const setClaimId = useBackendStore((state) => state.setClaimId);
+  const [isCreatingClaim, setIsCreatingClaim] = useState(false);
 
   const addAuditEvent = useCallback((type: AuditEvent["type"], message: string) => {
     setAuditEvents(prev => [...prev, {
@@ -54,6 +58,30 @@ export default function Index() {
       message
     }]);
   }, []);
+
+  // Create claim on mount if not exists
+  useEffect(() => {
+    const initClaim = async () => {
+      if (claimId) return;
+      
+      setIsCreatingClaim(true);
+      try {
+        const newClaimId = await createClaim();
+        setClaimId(newClaimId);
+        addAuditEvent("info", `Claim created: ${newClaimId}`);
+      } catch (error) {
+        console.error("Failed to create claim:", error);
+        // Generate a local claim ID as fallback
+        const fallbackId = `CLM-${Date.now().toString(36).toUpperCase()}`;
+        setClaimId(fallbackId);
+        addAuditEvent("info", `Using local claim ID: ${fallbackId}`);
+      } finally {
+        setIsCreatingClaim(false);
+      }
+    };
+    
+    initClaim();
+  }, [claimId, setClaimId, addAuditEvent]);
 
   const handleImageComplete = (result: VisionAnalysisResult, images?: { name: string; preview?: string }[]) => {
     setVisionResult(result);
@@ -70,6 +98,11 @@ export default function Index() {
   };
 
   const handleDocumentComplete = async (data: ExtractedDocumentData, docName?: string) => {
+    if (!claimId) {
+      toast.error("No claim ID available");
+      return;
+    }
+    
     setDocumentData(data);
     if (docName) {
       setUploadedDocuments(prev => [...prev, { name: docName }]);
@@ -82,7 +115,7 @@ export default function Index() {
     addAuditEvent("decision", "Running decision engine...");
     
     try {
-      const decisionResult = await getDecision({
+      const decisionResult = await getDecision(claimId, {
         vision_analysis: visionResult,
         document_data: data
       });
@@ -139,6 +172,18 @@ export default function Index() {
 
   const stableClaimData = useMemo(() => ({ visionResult, documentData, decision }), [visionResult, documentData, decision]);
 
+  // Loading state while creating claim
+  if (isCreatingClaim || !claimId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground">Initializing claim...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Show final summary page
   if (showSummary) {
     return (
@@ -168,6 +213,7 @@ export default function Index() {
         <div className="mt-10">
           {currentStep === 1 && (
             <ImageUploadStep 
+              claimId={claimId}
               onComplete={(result, images) => handleImageComplete(result, images)}
               onStatusChange={setStatus}
               onImagesChange={setUploadedImages}
@@ -176,6 +222,7 @@ export default function Index() {
 
           {currentStep === 2 && (
             <DocumentUploadStep 
+              claimId={claimId}
               onComplete={(data, docName) => {
                 handleDocumentComplete(data, docName);
               }}
@@ -188,6 +235,7 @@ export default function Index() {
                 <DecisionDisplay decision={decision} />
               ) : (
                 <RPAAnimation
+                  claimId={claimId}
                   claimData={stableClaimData}
                   onComplete={handleRPAComplete}
                 />

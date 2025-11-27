@@ -1,6 +1,5 @@
 import { useBackendStore } from './backendStore';
-
-const API_BASE = "https://4e948ef7-1668-4c39-85db-342a63b048e3-00-124qj2yd3st31.sisko.replit.dev:8000";
+import { API_BASE, safeJsonParse } from './api';
 
 export interface VisionAnalysisResult {
   damage_area: string;
@@ -10,7 +9,8 @@ export interface VisionAnalysisResult {
   escalate_to_siu: boolean;
 }
 
-export async function analyzeImage(imageFile: File, userDescription?: string): Promise<VisionAnalysisResult> {
+// Upload an image to a claim
+export async function uploadImage(claimId: string, imageFile: File): Promise<{ success: boolean; filename: string }> {
   const backendOnline = useBackendStore.getState().backendOnline;
   
   if (!backendOnline) {
@@ -18,12 +18,35 @@ export async function analyzeImage(imageFile: File, userDescription?: string): P
   }
 
   const formData = new FormData();
-  formData.append('image', imageFile);
+  formData.append('file', imageFile);
+
+  const response = await fetch(`${API_BASE}/claims/${claimId}/upload-image`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Image upload failed: ${response.statusText}`);
+  }
+
+  return safeJsonParse<{ success: boolean; filename: string }>(response);
+}
+
+// Analyze an uploaded image for damage detection
+export async function analyzeImage(claimId: string, imageFile: File, userDescription?: string): Promise<VisionAnalysisResult> {
+  const backendOnline = useBackendStore.getState().backendOnline;
+  
+  if (!backendOnline) {
+    throw new Error('Backend is offline. Please start the Replit server.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', imageFile);
   if (userDescription) {
     formData.append('description', userDescription);
   }
 
-  const response = await fetch(`${API_BASE}/analyze-image`, {
+  const response = await fetch(`${API_BASE}/claims/${claimId}/analyze-image`, {
     method: 'POST',
     body: formData,
   });
@@ -32,5 +55,5 @@ export async function analyzeImage(imageFile: File, userDescription?: string): P
     throw new Error(`Vision analysis failed: ${response.statusText}`);
   }
 
-  return response.json();
+  return safeJsonParse<VisionAnalysisResult>(response);
 }

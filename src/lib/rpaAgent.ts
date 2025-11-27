@@ -1,6 +1,5 @@
 import { useBackendStore } from './backendStore';
-
-const API_BASE = "https://4e948ef7-1668-4c39-85db-342a63b048e3-00-124qj2yd3st31.sisko.replit.dev:8000";
+import { API_BASE, safeJsonParse } from './api';
 
 export interface RPAStep {
   step: number;
@@ -13,14 +12,14 @@ export interface RPAResult {
   overall_status: "success" | "failed";
 }
 
-export async function simulateRPA(claimData: any): Promise<RPAResult> {
+export async function simulateRPA(claimId: string, claimData: any): Promise<RPAResult> {
   const backendOnline = useBackendStore.getState().backendOnline;
   
   if (!backendOnline) {
     throw new Error('Backend is offline. Please start the Replit server.');
   }
 
-  const response = await fetch(`${API_BASE}/simulate-rpa`, {
+  const response = await fetch(`${API_BASE}/claims/${claimId}/simulate-rpa`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -32,5 +31,5 @@ export async function simulateRPA(claimData: any): Promise<RPAResult> {
     throw new Error(`RPA simulation failed: ${response.statusText}`);
   }
 
-  return response.json();
+  return safeJsonParse<RPAResult>(response);
 }
