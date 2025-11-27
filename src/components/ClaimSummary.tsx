@@ -1,27 +1,21 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, FileText, Scan, Gavel, Bot, RotateCcw, Download } from "lucide-react";
-import { VisionAnalysisResult } from "@/lib/visionAgent";
-import { ExtractedDocumentData } from "@/lib/documentAgent";
-import { DecisionResult } from "@/lib/decisionAgent";
-import { RPAResult } from "@/lib/rpaAgent";
-import { CreateClaimPayload } from "@/lib/api";
+import { CheckCircle, FileText, Gavel, Bot, RotateCcw, Download } from "lucide-react";
+import { CreateClaimPayload, UploadResult, DecisionResult, RPAResult } from "@/lib/api";
 
 interface ClaimSummaryProps {
-  claimId?: string | null;
-  claimInfo?: CreateClaimPayload | null;
-  visionResult?: VisionAnalysisResult | null;
-  documentData?: ExtractedDocumentData | null;
-  decision?: DecisionResult | null;
-  rpaResult?: RPAResult | null;
+  claimId: string;
+  claimInfo: CreateClaimPayload;
+  uploadResults: UploadResult[];
+  decision: DecisionResult;
+  rpaResult: RPAResult;
 }
 
 export function ClaimSummary({
   claimId,
   claimInfo,
-  visionResult,
-  documentData,
+  uploadResults,
   decision,
   rpaResult
 }: ClaimSummaryProps) {
@@ -34,9 +28,8 @@ export function ClaimSummary({
       claimId,
       claimInfo,
       timestamp: new Date().toISOString(),
-      visionAnalysis: visionResult,
-      documentExtraction: documentData,
-      decision: decision,
+      uploadResults,
+      decision,
       rpaExecution: rpaResult
     };
     
@@ -44,7 +37,7 @@ export function ClaimSummary({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `claim-summary-${claimId || Date.now()}.json`;
+    a.download = `claim-summary-${claimId}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -59,151 +52,112 @@ export function ClaimSummary({
         </div>
         <h1 className="text-3xl font-bold text-foreground mb-2">Claim Processing Complete</h1>
         <p className="text-muted-foreground">All workflow steps have been executed successfully</p>
-        {claimId && (
-          <Badge variant="outline" className="mt-2 text-lg">
-            Claim ID: {claimId}
-          </Badge>
-        )}
+        <Badge variant="outline" className="mt-2 text-lg">
+          Claim ID: {claimId}
+        </Badge>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Claim Info */}
-        {claimInfo && (
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground">Claim Details</h3>
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-primary" />
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Customer:</span>
-                <span className="font-medium text-foreground">{claimInfo.customerName}</span>
-              </div>
+            <h3 className="font-semibold text-foreground">Claim Details</h3>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Company:</span>
+              <span className="font-medium text-foreground">{claimInfo.company_id}</span>
+            </div>
+            {claimInfo.policyNumber && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Policy:</span>
                 <span className="font-medium text-foreground">{claimInfo.policyNumber}</span>
               </div>
+            )}
+            {claimInfo.claimAmount && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Company:</span>
-                <span className="font-medium text-foreground">{claimInfo.company}</span>
+                <span className="text-muted-foreground">Amount:</span>
+                <span className="font-medium text-foreground">₹{claimInfo.claimAmount.toLocaleString()}</span>
               </div>
-            </div>
-          </Card>
-        )}
+            )}
+          </div>
+        </Card>
 
-        {/* Vision Analysis */}
-        {visionResult && (
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Scan className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground">Image Analysis</h3>
+        {/* Files Uploaded */}
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-primary" />
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Severity:</span>
-                <Badge variant="secondary">{visionResult.damageSeverity}</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Zone:</span>
-                <span className="font-medium text-foreground">{visionResult.damageZone}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Confidence:</span>
-                <span className="font-medium text-foreground">{(visionResult.confidence * 100).toFixed(1)}%</span>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Document Extraction */}
-        {documentData && (
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground">Document Data</h3>
-            </div>
-            <div className="space-y-2 text-sm">
-              {documentData.policyNumber && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Policy:</span>
-                  <span className="font-medium text-foreground">{documentData.policyNumber}</span>
-                </div>
-              )}
-              {documentData.claimAmount && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Amount:</span>
-                  <span className="font-medium text-foreground">₹{documentData.claimAmount.toLocaleString()}</span>
-                </div>
-              )}
-              {documentData.documentType && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Type:</span>
-                  <span className="font-medium text-foreground">{documentData.documentType}</span>
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
+            <h3 className="font-semibold text-foreground">Files Uploaded</h3>
+          </div>
+          <div className="text-center">
+            <p className="text-3xl font-bold text-foreground">{uploadResults.length}</p>
+            <p className="text-sm text-muted-foreground">files processed</p>
+          </div>
+        </Card>
 
         {/* Decision */}
-        {decision && (
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Gavel className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground">Decision</h3>
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Gavel className="w-5 h-5 text-primary" />
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Status:</span>
-                <Badge
-                  variant={decision.decision === "APPROVE" ? "default" : decision.decision === "REJECT" ? "destructive" : "secondary"}
-                  className={decision.decision === "APPROVE" ? "bg-success" : ""}
-                >
-                  {decision.decision}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Reason:</span>
-                <p className="font-medium text-foreground mt-1">{decision.reason}</p>
-              </div>
-              {decision.approvedAmount && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Approved:</span>
-                  <span className="font-medium text-success">₹{decision.approvedAmount.toLocaleString()}</span>
-                </div>
-              )}
+            <h3 className="font-semibold text-foreground">Decision</h3>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Status:</span>
+              <Badge
+                variant={
+                  decision.decision.toLowerCase().includes("approve") ? "default" : 
+                  decision.decision.toLowerCase().includes("reject") || decision.decision.toLowerCase() === "siu" ? "destructive" : "secondary"
+                }
+                className={decision.decision.toLowerCase().includes("approve") ? "bg-success" : ""}
+              >
+                {decision.decision}
+              </Badge>
             </div>
-          </Card>
-        )}
+            {decision.riskLevel && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Risk Level:</span>
+                <span className="font-medium text-foreground">{decision.riskLevel}</span>
+              </div>
+            )}
+            {decision.damageZone && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Damage Zone:</span>
+                <span className="font-medium text-foreground">{decision.damageZone}</span>
+              </div>
+            )}
+            <div className="pt-2">
+              <span className="text-muted-foreground">Reason:</span>
+              <p className="font-medium text-foreground mt-1">{decision.reason}</p>
+            </div>
+          </div>
+        </Card>
 
         {/* RPA Result */}
-        {rpaResult && (
-          <Card className="p-6 md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Bot className="w-5 h-5 text-primary" />
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Bot className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="font-semibold text-foreground">RPA Workflow</h3>
+            <Badge variant="default" className="bg-success ml-auto">{rpaResult.status}</Badge>
+          </div>
+          <div className="space-y-1">
+            {rpaResult.steps.map((step, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
+                <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+                <span className="text-foreground truncate">{step.description}</span>
               </div>
-              <h3 className="font-semibold text-foreground">RPA Workflow</h3>
-              <Badge variant="default" className="bg-success ml-auto">{rpaResult.status}</Badge>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {rpaResult.steps.map((step, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
-                  <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
-                  <span className="text-foreground truncate">{step.description}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
+            ))}
+          </div>
+        </Card>
       </div>
 
       <div className="flex justify-center gap-4 pt-4">

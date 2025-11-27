@@ -10,18 +10,11 @@ export function useBackendHealthCheck() {
       try {
         const response = await fetch(`${API_BASE}/ping`, {
           method: 'GET',
-          // Add timeout to prevent hanging
           signal: AbortSignal.timeout(5000),
         });
         
         if (response.ok) {
-          try {
-            const data = await response.json();
-            setBackendOnline(data.status === 'ok');
-          } catch {
-            // If JSON parse fails but response was ok, assume backend is up
-            setBackendOnline(true);
-          }
+          setBackendOnline(true);
         } else {
           setBackendOnline(false);
         }
@@ -31,11 +24,8 @@ export function useBackendHealthCheck() {
       }
     };
 
-    // Check immediately on mount
     checkHealth();
-
-    // Check every 10 seconds (reduced frequency)
-    const interval = setInterval(checkHealth, 10000);
+    const interval = setInterval(checkHealth, 5000);
 
     return () => clearInterval(interval);
   }, [setBackendOnline]);
