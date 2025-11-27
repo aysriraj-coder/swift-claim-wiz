@@ -9,10 +9,10 @@ export interface RPAStep {
 export interface RPAResult {
   status: string;
   steps: RPAStep[];
+  message?: string;
 }
 
 export async function simulateRPA(claimId: string): Promise<RPAResult> {
-
   const backendOnline = useBackendStore.getState().backendOnline;
   if (!backendOnline) throw new Error("Backend offline.");
 

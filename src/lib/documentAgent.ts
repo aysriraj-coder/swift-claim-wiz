@@ -4,29 +4,23 @@ import { API_BASE, safeJsonParse } from './api';
 export interface ExtractedDocumentData {
   claimAmount?: number;
   policyNumber?: string;
-  extracted?: any;
+  documentType?: string;
+  extractedText?: string;
+  metadata?: Record<string, any>;
 }
 
-export async function extractDocuments(
-  claimId: string,
-  documentFile: File
-): Promise<ExtractedDocumentData> {
-
+// Extract data from uploaded documents
+export async function extractDocuments(claimId: string): Promise<ExtractedDocumentData> {
   const backendOnline = useBackendStore.getState().backendOnline;
   if (!backendOnline) throw new Error("Backend offline.");
 
-  const formData = new FormData();
-  formData.append("file", documentFile);
-
-  const response = await fetch(`${API_BASE}/claims/${claimId}/upload`, {
+  const response = await fetch(`${API_BASE}/claims/${claimId}/extract-docs`, {
     method: "POST",
-    body: formData,
   });
 
   if (!response.ok) {
     throw new Error(`Document extraction failed: ${response.statusText}`);
   }
 
-  const data = await safeJsonParse<{ metadata?: { extract?: ExtractedDocumentData } }>(response);
-  return data.metadata?.extract || {};
+  return safeJsonParse(response);
 }

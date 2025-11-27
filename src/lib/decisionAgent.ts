@@ -2,15 +2,13 @@ import { useBackendStore } from './backendStore';
 import { API_BASE, safeJsonParse } from './api';
 
 export interface DecisionResult {
-  decision: string;
+  decision: "APPROVE" | "REJECT" | "NEEDS_INFO" | string;
   reason: string;
   approvedAmount?: number;
+  missingFields?: string[];
 }
 
-export async function getDecision(
-  claimId: string
-): Promise<DecisionResult> {
-
+export async function getDecision(claimId: string): Promise<DecisionResult> {
   const backendOnline = useBackendStore.getState().backendOnline;
   if (!backendOnline) throw new Error("Backend offline.");
 
