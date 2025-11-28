@@ -1,5 +1,18 @@
 // Centralized API Configuration
-export const API_BASE = "https://c8ccbc7a-0b0b-4b6b-8382-59c52e3d4ff1-00-mp30ce7exoea.pike.replit.dev";
+export const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://c8ccbc7a-0b0b-4b6b-8382-59c52e3d4ff1-00-mp30ce7exoea.pike.replit.dev";
+
+// CORS error detection helper
+export function isCorsError(error: unknown): boolean {
+  if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+    return true;
+  }
+  return false;
+}
+
+// User-friendly error message for CORS issues
+export function getCorsErrorMessage(): string {
+  return `Request blocked by browser (CORS). Please verify backend URL or enable CORS in backend.\n\nBackend URL: ${API_BASE}`;
+}
 
 // Helper to safely parse JSON responses
 export async function safeJsonParse<T>(response: Response): Promise<T> {
@@ -8,6 +21,19 @@ export async function safeJsonParse<T>(response: Response): Promise<T> {
     return JSON.parse(text) as T;
   } catch {
     throw new Error(`Invalid JSON response: ${text.slice(0, 200)}`);
+  }
+}
+
+// Wrapper for fetch with CORS error handling
+async function safeFetch(url: string, options?: RequestInit): Promise<Response> {
+  try {
+    const response = await fetch(url, options);
+    return response;
+  } catch (error) {
+    if (isCorsError(error)) {
+      throw new Error(getCorsErrorMessage());
+    }
+    throw error;
   }
 }
 
@@ -20,7 +46,7 @@ export interface CreateClaimPayload {
 
 // Create a new claim and return the claimId
 export async function createClaim(payload: CreateClaimPayload): Promise<string> {
-  const response = await fetch(`${API_BASE}/claims`, {
+  const response = await safeFetch(`${API_BASE}/claims`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -59,7 +85,7 @@ export async function uploadFile(claimId: string, file: File): Promise<UploadRes
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE}/claims/${claimId}/upload`, {
+  const response = await safeFetch(`${API_BASE}/claims/${claimId}/upload`, {
     method: "POST",
     body: formData,
   });
@@ -78,7 +104,7 @@ export interface CheckResult {
 
 // Check claim for missing info
 export async function checkClaim(claimId: string): Promise<CheckResult> {
-  const response = await fetch(`${API_BASE}/claims/${claimId}/check`, {
+  const response = await safeFetch(`${API_BASE}/claims/${claimId}/check`, {
     method: "GET",
   });
 
@@ -93,14 +119,27 @@ export interface DecisionResult {
   decision: string;
   reason: string;
   riskLevel?: string;
+  riskScore?: number;
   damageZone?: string;
   mismatchCount?: number;
   approvedAmount?: number;
+  thresholds?: {
+    autoApprove?: number;
+    manualReview?: number;
+    siuFlag?: number;
+  };
+  triagePath?: string[];
+  auditTrail?: Array<{
+    step: string;
+    result: string;
+    timestamp?: string;
+  }>;
+  rawPayload?: Record<string, unknown>;
 }
 
 // Get decision for claim
 export async function getDecision(claimId: string): Promise<DecisionResult> {
-  const response = await fetch(`${API_BASE}/claims/${claimId}/decision`, {
+  const response = await safeFetch(`${API_BASE}/claims/${claimId}/decision`, {
     method: "POST",
     headers: {
       'Content-Type': 'application/json',
@@ -119,16 +158,18 @@ export interface RPAStep {
   step: number;
   description: string;
   status?: string;
+  error?: string;
 }
 
 export interface RPAResult {
   status: string;
   steps: RPAStep[];
+  error?: string;
 }
 
-// Simulate RPA workflow
-export async function simulateRPA(claimId: string): Promise<RPAResult> {
-  const response = await fetch(`${API_BASE}/claims/${claimId}/simulate-rpa`, {
+// Execute RPA workflow - CORRECT ENDPOINT: /claims/{id}/rpa
+export async function executeRPA(claimId: string): Promise<RPAResult> {
+  const response = await safeFetch(`${API_BASE}/claims/${claimId}/rpa`, {
     method: "POST",
     headers: {
       'Content-Type': 'application/json',
@@ -136,9 +177,25 @@ export async function simulateRPA(claimId: string): Promise<RPAResult> {
     body: JSON.stringify({}),
   });
 
+  if (response.status === 404) {
+    throw new Error("RPA not available for this claim. Contact support.");
+  }
+
   if (!response.ok) {
-    throw new Error(`RPA simulation failed: ${response.statusText}`);
+    throw new Error(`RPA execution failed: ${response.statusText}`);
   }
 
   return safeJsonParse(response);
+}
+
+// Health check
+export async function pingBackend(): Promise<boolean> {
+  try {
+    const response = await safeFetch(`${API_BASE}/ping`, {
+      method: "GET",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
