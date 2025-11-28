@@ -1,6 +1,9 @@
 // Centralized API Configuration
 export const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://c8ccbc7a-0b0b-4b6b-8382-59c52e3d4ff1-00-mp30ce7exoea.pike.replit.dev";
 
+// Request timeout in ms
+const REQUEST_TIMEOUT = 15000;
+
 // CORS error detection helper
 export function isCorsError(error: unknown): boolean {
   if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
@@ -24,12 +27,31 @@ export async function safeJsonParse<T>(response: Response): Promise<T> {
   }
 }
 
-// Wrapper for fetch with CORS error handling
+// Fetch with timeout
+async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// Wrapper for fetch with CORS error handling and timeout
 async function safeFetch(url: string, options?: RequestInit): Promise<Response> {
   try {
-    const response = await fetch(url, options);
+    const response = await fetchWithTimeout(url, options);
     return response;
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Request timed out after ${REQUEST_TIMEOUT / 1000}s. Please try again.`);
+    }
     if (isCorsError(error)) {
       throw new Error(getCorsErrorMessage());
     }
@@ -62,21 +84,27 @@ export async function createClaim(payload: CreateClaimPayload): Promise<string> 
   return data.claimId;
 }
 
+export interface DetectorMetadata {
+  damage_severity?: string;
+  damage_zone?: string;
+  confidence?: number;
+}
+
+export interface ExtractMetadata {
+  documentType?: string;
+  extractedText?: string;
+  claimAmount?: number;
+  policyNumber?: string;
+  vehicle?: string;
+  extracted?: Record<string, unknown>;
+}
+
 export interface UploadResult {
   status: string;
   filename?: string;
   metadata?: {
-    detector?: {
-      damage_severity?: string;
-      damage_zone?: string;
-      confidence?: number;
-    };
-    extract?: {
-      documentType?: string;
-      extractedText?: string;
-      claimAmount?: number;
-      policyNumber?: string;
-    };
+    detector?: DetectorMetadata;
+    extract?: ExtractMetadata;
   };
 }
 
@@ -100,6 +128,7 @@ export async function uploadFile(claimId: string, file: File): Promise<UploadRes
 export interface CheckResult {
   status: "needs_info" | "ok";
   missing?: string[];
+  payload?: Record<string, unknown>;
 }
 
 // Check claim for missing info
@@ -115,25 +144,36 @@ export async function checkClaim(claimId: string): Promise<CheckResult> {
   return safeJsonParse(response);
 }
 
+export interface DecisionThresholds {
+  autoApprove?: number;
+  approve?: number;
+  manualReview?: number;
+  manual_review?: number;
+  siuFlag?: number;
+  deny?: number;
+}
+
+export interface AuditTrailEntry {
+  step: string;
+  result: string;
+  timestamp?: string;
+}
+
 export interface DecisionResult {
   decision: string;
   reason: string;
   riskLevel?: string;
   riskScore?: number;
+  risk_score?: number;
   damageZone?: string;
   mismatchCount?: number;
+  mismatch_score?: number;
   approvedAmount?: number;
-  thresholds?: {
-    autoApprove?: number;
-    manualReview?: number;
-    siuFlag?: number;
-  };
+  thresholds?: DecisionThresholds;
   triagePath?: string[];
-  auditTrail?: Array<{
-    step: string;
-    result: string;
-    timestamp?: string;
-  }>;
+  path?: string[];
+  auditTrail?: AuditTrailEntry[];
+  details?: Record<string, unknown>;
   rawPayload?: Record<string, unknown>;
 }
 
@@ -155,9 +195,10 @@ export async function getDecision(claimId: string): Promise<DecisionResult> {
 }
 
 export interface RPAStep {
-  step: number;
-  description: string;
+  step: number | string;
+  description?: string;
   status?: string;
+  message?: string;
   error?: string;
 }
 
@@ -167,7 +208,7 @@ export interface RPAResult {
   error?: string;
 }
 
-// Execute RPA workflow - CORRECT ENDPOINT: /claims/{id}/rpa
+// Execute RPA workflow
 export async function executeRPA(claimId: string): Promise<RPAResult> {
   const response = await safeFetch(`${API_BASE}/claims/${claimId}/rpa`, {
     method: "POST",
